@@ -1,0 +1,19 @@
+{
+  "name": "fitquest",
+  "version": "2.0.0",
+  "private": true,
+  "description": "FitQuest gym member & staff app for Netlify (static site + Netlify Function + Netlify Database).",
+  "type": "module",
+  "scripts": {
+    "dev": "netlify dev",
+    "test": "node test/api.test.mjs && node test/ui.test.mjs"
+  },
+  "engines": { "node": ">=22.12.0" },
+  "dependencies": {
+    "@netlify/database": "^2.0.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17",
+    "jsdom": "^25.0.0"
+  }
+}

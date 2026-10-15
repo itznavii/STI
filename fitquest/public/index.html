@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FitQuest</title>
+<link rel="icon" type="image/png" href="/img/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+--bg:#FFFAF5;--surface:#FFFFFF;--surface2:#F7F0E8;--border:#EBDFD2;--text:#231C18;--muted:#7C7169;
+--xp:#EE4F27;--xp-dim:#FFE9E1;--xp-ink:#B8371A;
+--rp:#1F9E86;--rp-dim:#DDF4EE;--rp-ink:#14705E;
+--danger:#D93B40;--danger-dim:#FDE6E6;
+--ok:#1F9E5A;--ok-dim:#DFF4E7;
+--pending:#C98510;--pending-dim:#FFF1D6;
+--font-d:'Plus Jakarta Sans',system-ui,sans-serif;--font-b:'Plus Jakarta Sans',system-ui,sans-serif;
+--radius:18px;--shadow:0 1px 2px rgba(60,35,15,.05),0 6px 20px rgba(60,35,15,.06);}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-padding-top:env(safe-area-inset-top,0px);}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);font-size:15px;line-height:1.5;min-height:100vh;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);-webkit-font-smoothing:antialiased;}
+h1,h2,h3{font-family:var(--font-d);font-weight:800;letter-spacing:-.02em;line-height:1.15;}
+h2{font-size:1.5rem}h3{font-size:1.1rem;font-weight:700}
+button,input,select,textarea{font-family:var(--font-b);}
+:focus-visible{outline:3px solid rgba(238,79,39,.35);outline-offset:2px;}
+.wrap{max-width:1040px;margin:0 auto;padding:24px 16px 96px;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:rgba(255,250,245,.92);backdrop-filter:blur(12px);position:sticky;top:0;z-index:50;border-bottom:1px solid var(--border);}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.25rem;letter-spacing:-.03em}
+.brand .accent{color:var(--xp)}
+.logo{width:34px;height:34px;border-radius:11px;background:var(--xp);color:#fff;display:inline-flex;align-items:center;justify-content:center}
+.btn{background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:999px;padding:10px 18px;font-weight:700;font-size:.88rem;cursor:pointer;transition:transform .12s,box-shadow .12s,background .12s;}
+.btn:hover{background:var(--surface2)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--xp);color:#fff;border-color:var(--xp);box-shadow:0 4px 12px rgba(238,79,39,.25)}
+.btn.primary:hover{background:#D94420}
+.btn.violet{background:var(--rp);color:#fff;border-color:var(--rp);box-shadow:0 4px 12px rgba(31,158,134,.25)}
+.btn.violet:hover{background:#188770}
+.btn.danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+.btn.small{padding:7px 14px;font-size:.8rem}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+input,select,textarea{width:100%;background:var(--surface);border:1.5px solid var(--border);color:var(--text);border-radius:14px;padding:12px 14px;font-size:.95rem;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--xp);box-shadow:0 0 0 4px rgba(238,79,39,.12)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:.82rem;font-weight:600;color:var(--text);margin-bottom:6px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.g3{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+.pill{display:inline-block;padding:4px 12px;border-radius:999px;font-size:.75rem;font-weight:700;}
+.pill.xp{background:var(--xp-dim);color:var(--xp-ink)}
+.pill.rp{background:var(--rp-dim);color:var(--rp-ink)}
+.pill.ok{background:var(--ok-dim);color:#14703D}
+.pill.pending{background:var(--pending-dim);color:#8A5A05}
+.pill.rej{background:var(--danger-dim);color:#A62328}
+.bar{height:12px;background:var(--surface2);border-radius:999px;overflow:hidden;margin-top:8px}
+.bar>div{height:100%;background:linear-gradient(90deg,#FF8A5C,var(--xp));border-radius:999px;transition:width .5s ease}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:12px 16px;scrollbar-width:none;max-width:1040px;margin:0 auto}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:9px 18px;font-size:.88rem;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap;border-radius:999px;background:transparent;transition:background .15s,color .15s}
+.tab:hover{background:var(--surface2);color:var(--text)}
+.tab.active{background:var(--text);color:#fff}
+.view{display:none}.view.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.center{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+.authwrap{display:grid;grid-template-columns:1.1fr 1fr;max-width:900px;width:100%;background:var(--surface);border-radius:28px;overflow:hidden;box-shadow:0 20px 60px rgba(60,35,15,.12);border:1px solid var(--border)}
+.authhero{background:linear-gradient(155deg,#EE4F27 0%,#FF8A5C 100%);color:#fff;padding:40px 34px;display:flex;flex-direction:column;justify-content:space-between;gap:30px}
+.authhero h1{font-size:2.5rem;line-height:1.05}
+.authhero ul{list-style:none;display:grid;gap:14px}
+.authhero li{display:flex;gap:12px;align-items:center;font-weight:600;font-size:.95rem}
+.authhero li i{width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,.22);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.authbox{padding:40px 34px;display:flex;flex-direction:column;justify-content:center}
+@media(max-width:720px){.authwrap{grid-template-columns:1fr}.authhero{padding:28px 24px;gap:18px}.authhero ul{display:none}.authbox{padding:28px 24px}}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:#fff;padding:12px 22px;border-radius:999px;opacity:0;transition:.3s;z-index:200;font-size:.88rem;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.modal-bg{position:fixed;inset:0;background:rgba(35,28,24,.45);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:150;padding:16px}
+.modal-bg.show{display:flex}
+.modal{background:var(--surface);border-radius:24px;padding:24px;max-width:440px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.25)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.muted{color:var(--muted);font-size:.85rem}
+.notif-dot{width:9px;height:9px;background:var(--xp);border:2px solid #fff;border-radius:50%;position:absolute;top:4px;right:4px}
+a.link{color:var(--xp);cursor:pointer;font-size:.88rem;font-weight:700;}
+a.link:hover{text-decoration:underline}
+.statbox{text-align:center}
+.statbox .n{font-size:2rem;font-weight:800;letter-spacing:-.03em}
+#views h2+.grid,#views h2+.row{margin-top:2px}
+.topbar .row{flex-wrap:nowrap;flex-shrink:0}
+#whoami{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.userchip{display:inline-flex;align-items:center;gap:8px;background:transparent;border:3px solid transparent;border-radius:10px;padding:2px 8px 2px 2px;cursor:pointer;color:inherit;font:inherit;transition:background .15s,border-color .15s,transform .1s}
+.userchip:hover{background:var(--cream);border-color:var(--ink)}
+.userchip:active{transform:translateY(1px)}
+.userchip.active{background:var(--cream);border-color:var(--ink)}
+.userchip:hover #whoami,.userchip.active #whoami{color:var(--ink)}
+.staffprof{text-align:center}
+.staffprof .avbig{margin:0 auto 10px}
+@media (max-width:480px){
+  #whoami{display:none}
+  .userchip{padding:2px}
+  .topbar{padding:10px 14px}
+  .brand{font-size:1.05rem;gap:7px}
+  .logo{width:30px;height:30px;border-radius:9px}
+  .wrap{padding:18px 12px 90px}
+  .authhero{padding:24px 20px}
+  .authbox{padding:24px 20px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<link rel="stylesheet" href="/theme.css">
+</head>
+<body>
+<div id="authView" class="center">
+  <main class="authstack">
+    <img class="authlogo" src="/img/logo.png" alt="FitQuest trophy with a fist lifting a dumbbell">
+    <div class="authcard">
+      <div id="loginForm">
+        <h1>Welcome!</h1><p class="sub">Are you ready to start?</p>
+        <div class="field"><label>Email</label><input id="li-email" type="email" autocomplete="username"></div>
+        <div class="field"><label>Password</label><input id="li-pass" type="password" autocomplete="current-password"></div>
+        <button class="btn primary" style="width:100%" onclick="login()">Log in</button>
+        <p class="muted" style="margin-top:14px">No account? <a class="link" onclick="showRegister()">Register</a></p>
+      </div>
+      <div id="regForm" style="display:none">
+        <h1>Hero creation</h1><p class="sub">Start your FitQuest journey</p>
+        <div class="field"><label>Full name</label><input id="rg-name"></div>
+        <div class="field"><label>Email</label><input id="rg-email" type="email" autocomplete="email"></div>
+        <div class="field"><label>Password (at least 6 characters)</label><input id="rg-pass" type="password" autocomplete="new-password"></div>
+        <div class="field"><label>Phone</label><input id="rg-phone"></div>
+        <div class="field"><label>Referral code (optional)</label><input id="rg-ref"></div>
+        <button class="btn primary" style="width:100%" onclick="register()">Create account</button>
+        <p class="muted" style="margin-top:14px">Have an account? <a class="link" onclick="showLogin()">Log in</a></p>
+      </div>
+    </div>
+  </main>
+  <footer class="authfoot">2026 FitQuest - Level up your health</footer>
+</div>
+
+<div id="appView" style="display:none">
+  <div class="topbar">
+    <div class="brand"><img class="logo-img" src="/img/logo-sm.png" alt=""><span>Fit<span class="accent">Quest</span></span></div>
+    <div class="row" style="align-items:center">
+      <button type="button" class="userchip" id="userChip" onclick="openProfile()" aria-label="Open my profile" title="My profile"><img id="topAvatar" class="topav" alt=""><span class="muted" id="whoami" style="font-size:.85rem"></span></button>
+      <button class="btn small" style="position:relative" onclick="openNotifs()" aria-label="Notifications"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="display:block"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg><span id="notifDot" class="notif-dot" style="display:none"></span></button>
+      <button class="btn small" onclick="logout()">Log out</button>
+    </div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="wrap" id="views"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal-bg" id="modalbg" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"></div></div>
+
+<script>
+let db=null, me=null, unsub=[], token=null, APP_TZ='UTC';
+
+// ---- REMOTE DATABASE CLIENT ----
+// Talks to this app's own backend (server.js), which persists everything
+// to a real database file on disk (data/db.json). Same doc/collection
+// query API as before, so nothing else in this file needs to change.
+function createRemoteDB(){
+  const enc=encodeURIComponent;
+  async function apiQuery(coll,wheres,orderByField,orderByDir,limitN){
+    return api('GET',`/api/collection/${enc(coll)}?query=${enc(JSON.stringify({wheres,orderByField,orderByDir,limitN}))}`);
+  }
+  function makeDocSnap(coll,id,data){
+    const has = data!==undefined && data!==null;
+    return { id, exists: has, data:()=> has?JSON.parse(JSON.stringify(data)):undefined };
+  }
+  class Query{
+    constructor(path){ this.path=path; this.wheres=[]; this.orderByField=null; this.orderByDir='asc'; this.limitN=null; }
+    where(f,op,v){ this.wheres.push([f,op,v]); return this; }
+    orderBy(f,dir='asc'){ this.orderByField=f; this.orderByDir=dir; return this; }
+    limit(n){ this.limitN=n; return this; }
+    async get(){
+      const res = await apiQuery(this.path,this.wheres,this.orderByField,this.orderByDir,this.limitN);
+      const docs = res.docs.map(d=>makeDocSnap(this.path,d.id,d.data));
+      return { docs, size:docs.length, empty:docs.length===0 };
+    }
+    onSnapshot(cb){
+      // Polls (no push channel). Slow on purpose: every poll is a function call. Pauses while the tab is hidden.
+      let stopped=false, lastJson=null;
+      const poll=async()=>{
+        if(stopped) return;
+        if(!document.hidden){
+          try{
+            const res = await apiQuery(this.path,this.wheres,this.orderByField,this.orderByDir,this.limitN);
+            const j = JSON.stringify(res.docs);
+            if(!stopped && j!==lastJson){ lastJson=j; cb({ docs: res.docs.map(d=>makeDocSnap(this.path,d.id,d.data)), size:res.docs.length, empty:res.docs.length===0 }); }
+          }catch(e){ /* offline or server hiccup — try again next tick */ }
+        }
+        if(!stopped) setTimeout(poll,20000);
+      };
+      poll();
+      return ()=>{ stopped=true; };
+    }
+  }
+  function splitPath(p){ const i=p.indexOf('/'); return [p.slice(0,i), p.slice(i+1)]; }
+  return {
+    doc(path){
+      const [coll,id]=splitPath(path);
+      const url=`/api/doc/${enc(coll)}/${enc(id)}`;
+      return {
+        get: async()=>{ const r=await api('GET',url); return makeDocSnap(coll,id, r.exists?r.data:undefined); },
+        // staff-only catalogue writes (quests / rewards); the server rejects anything else
+        set: async(data)=>{ await api('PUT',url,data); },
+        update: async(patch)=>{ await api('PATCH',url,patch); },
+        delete: async()=>{ await api('DELETE',url); },
+      };
+    },
+    collection(path){ return new Query(path); }
+  };
+}
+
+
+const ACH=[
+  {id:'first_workout',name:'First Workout',icon:'medal',color:'#FF6B4A',check:s=>s.completions>=1},
+  {id:'first_checkin',name:'First Check-In',icon:'check',color:'#2FA88F',check:s=>s.checkins>=1},
+  {id:'streak3',name:'3-Day Streak',icon:'flame',color:'#FF6B4A',check:s=>s.longestStreak>=3},
+  {id:'streak7',name:'7-Day Streak',icon:'flame',color:'#FF6B4A',check:s=>s.longestStreak>=7},
+  {id:'streak30',name:'30-Day Streak',icon:'flame',color:'#FF6B4A',check:s=>s.longestStreak>=30},
+  {id:'streak100',name:'100-Day Streak',icon:'flame',color:'#FF6B4A',check:s=>s.longestStreak>=100},
+  {id:'workouts10',name:'10 Workouts',icon:'dumbbell',color:'#4A7CFF',check:s=>s.completions>=10},
+  {id:'workouts50',name:'50 Workouts',icon:'dumbbell',color:'#4A7CFF',check:s=>s.completions>=50},
+  {id:'workouts100',name:'100 Workouts',icon:'dumbbell',color:'#4A7CFF',check:s=>s.completions>=100},
+  {id:'xp1000',name:'1,000 XP',icon:'star',color:'#E8A23D',check:s=>s.xp>=1000},
+  {id:'xp5000',name:'5,000 XP',icon:'star',color:'#E8A23D',check:s=>s.xp>=5000},
+  {id:'xp10000',name:'10,000 XP',icon:'star',color:'#E8A23D',check:s=>s.xp>=10000},
+  {id:'level5',name:'Level 5',icon:'trophy',color:'#C77DFF',check:s=>s.level>=5},
+  {id:'jointeam',name:'Join a Team',icon:'users',color:'#2FA88F',check:s=>s.teamsJoined>=1},
+  {id:'teamcomplete',name:'Complete Team Challenge',icon:'trophy',color:'#C77DFF',check:s=>s.teamsCompleted>=1},
+  {id:'refer1',name:'Refer a Friend',icon:'users',color:'#2FA88F',check:s=>s.referrals>=1},
+  {id:'loyal12',name:'12 Stamps',icon:'gift',color:'#EC5E8A',check:s=>s.loyaltyStamps>=12},
+  {id:'loyal24',name:'24 Stamps',icon:'gift',color:'#EC5E8A',check:s=>s.loyaltyStamps>=24},
+  {id:'checkin10',name:'10 Gym Visits',icon:'dumbbell',color:'#4A7CFF',check:s=>s.checkins>=10},
+  {id:'checkin50',name:'50 Gym Visits',icon:'trophy',color:'#C77DFF',check:s=>s.checkins>=50},
+  {id:'checkin100',name:'100 Gym Visits',icon:'crown',color:'#E8A23D',check:s=>s.checkins>=100},
+];
+
+// ---- ICON SYSTEM (replaces emoji with a consistent line-icon set) ----
+const ICON_PATHS = {
+  bell: '<path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/>',
+  flame: '<path d="M12 21.5c4 0 6.2-2.8 6.2-6.3 0-4.5-5.4-5.6-4.4-11.7-4.6 2.8-7.5 6.7-7.5 11.7 0 3.5 2.8 6.3 5.7 6.3Z"/><path d="M12 21.5c1.7 0 2.8-1.3 2.8-3 0-1.9-1.8-2.4-1.6-5-2 1.7-3.2 3.6-3.2 5.6 0 1.6 1 2.4 2 2.4Z"/>',
+  check: '<circle cx="12" cy="12" r="9"/><path d="M8.3 12.3l2.4 2.4 4.7-5"/>',
+  circleoutline: '<circle cx="12" cy="12" r="9"/>',
+  medal: '<circle cx="12" cy="9.5" r="5.2"/><path d="M9 14 6.8 21l5.2-3 5.2 3-2.2-7"/>',
+  dumbbell: '<path d="M4.5 9v6M7 6.5v11M17 6.5v11M19.5 9v6M7 12h10"/>',
+  star: '<path d="M12 3l2.5 5.9 6.3.6-4.8 4.2 1.4 6.2L12 16.8 6.6 19.9 8 13.7 3.2 9.5l6.3-.6Z"/>',
+  trophy: '<path d="M8 4h8v4.5a4 4 0 0 1-8 0Z"/><path d="M8 5.2H5.3a2.8 2.8 0 0 0 2.9 4.6M16 5.2h2.7a2.8 2.8 0 0 1-2.9 4.6"/><path d="M10.5 14.8h3v3h-3z"/><path d="M8 20.5h8"/>',
+  users: '<circle cx="9" cy="8.3" r="3"/><path d="M3.2 19.5c.3-3 2.8-5 5.8-5s5.5 2 5.8 5"/><circle cx="17.2" cy="9.3" r="2.3"/><path d="M15.3 19.5c.2-2.2 1.7-3.8 3.3-4.2"/>',
+  gift: '<rect x="4" y="10.5" width="16" height="9.5" rx="1.2"/><path d="M4 10.5h16"/><path d="M12 10.5v9.5"/><path d="M12 10.5c-1.8-4-7.3-3.8-7.3-1s4 1.3 7.3 1c3.3.3 7.3-.2 7.3-1s-5.5-3-7.3 1Z"/>',
+  crown: '<path d="M4.5 17.5h15l-1.1-8-3.9 3-2.5-6-2.5 6-3.9-3Z"/><path d="M4.5 17.5v2.3h15v-2.3"/>',
+  towel: '<rect x="5" y="4" width="14" height="16" rx="2"/><path d="M9.3 4v16M13.7 4v16" opacity=".45"/>',
+  bottle: '<path d="M10.2 3h3.6v2.1l1.1 2.1V19a2 2 0 0 1-2 2h-1.8a2 2 0 0 1-2-2V7.2l1.1-2.1Z"/><path d="M9 12.5h6"/>',
+  band: '<path d="M12 4.5c-5 0-8 3.2-8 7.5s3 7.5 8 7.5 8-3.2 8-7.5"/><path d="M12 8.3c-2.6 0-4.2 1.5-4.2 3.7s1.6 3.7 4.2 3.7 4.2-1.5 4.2-3.7"/>',
+  cap: '<path d="M4.2 14.2c0-4.2 3.6-7.2 7.8-7.2s7.8 3 7.8 7.2"/><path d="M4.2 14.2h15.6"/><path d="M12 7V4"/><rect x="8.8" y="14.2" width="10.4" height="3" rx="1"/>',
+  shirt: '<path d="M8.3 4 4.2 8.1l2.9 2.9 1-1V21h7.8V10l1 1 2.9-2.9L15.7 4l-2 2h-3.4Z"/>',
+  percent: '<circle cx="7.3" cy="7.3" r="2.4"/><circle cx="16.7" cy="16.7" r="2.4"/><path d="M17.5 6.5 6.5 17.5"/>',
+};
+function svgIcon(name,size){
+  size = size||20;
+  const path = ICON_PATHS[name]||ICON_PATHS.circleoutline;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:block">${path}</svg>`;
+}
+function iconBadge(name,color,size){
+  size = size||40;
+  const iconSize = Math.round(size*0.52);
+  return `<span style="display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:${Math.round(size*0.32)}px;background:${color}1A;color:${color};flex-shrink:0">${svgIcon(name,iconSize)}</span>`;
+}
+const REWARD_ICON = {
+  'Portable Mini Towel':['towel','#4A7CFF'], 'Shake Bottle':['bottle','#2FA88F'], 'Resistance Band':['band','#FF6B4A'],
+  'FitQuest Cap':['cap','#C77DFF'], 'FitQuest Shirt':['shirt','#EC5E8A'],
+  '10% Membership Discount':['percent','#E8A23D'], '20% Membership Discount':['percent','#E8A23D'],
+};
+function rewardImage(name){ let k=0; for(const c of name) k+=c.charCodeAt(0); return `<div class="rimg"><img src="/img/gift${k%2+1}.png" alt=""></div>`; }
+function todayIso(){ return dateIso(Date.now()); }
+function dateIso(ts){
+  try{ return new Intl.DateTimeFormat('en-CA',{timeZone:APP_TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(ts); }
+  catch(e){ return new Date(ts).toISOString().slice(0,10); }
+}
+
+
+
+
+
+
+
+async function checkIn(){
+  await run(async()=>{
+    const r=await api('POST','/api/checkin');
+    const extra=(r.unlocked&&r.unlocked.length)?' · Unlocked: '+r.unlocked.join(', '):'';
+    toast('Checked in! +10 XP +5 RP'+extra); await refreshMe(); renderHome();
+  }, ()=>renderHome());
+}
+
+function membershipStatus(expiry){ const days=Math.ceil((expiry-Date.now())/86400000); if(days<0)return{status:'Expired',days:0}; if(days<=7)return{status:'Expiring Soon',days}; return{status:'Active',days}; }
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),2600);}
+function openModal(h){document.getElementById('modal').innerHTML=h;document.getElementById('modalbg').classList.add('show');}
+function closeModal(){document.getElementById('modalbg').classList.remove('show');}
+function esc(s){return (s||'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
+
+function levelFromXp(xp){return Math.floor(xp/100)+1;}
+
+
+async function init(){
+  db = createRemoteDB();
+  try{ token=localStorage.getItem('fq_token'); }catch(e){ token=null; }
+  if(!token) return;
+  try{ applySession(await api('GET','/api/auth/me')); enterApp(); }
+  catch(e){
+    if(/Cannot reach/.test(e.message)) toast(e.message);
+    else { token=null; try{ localStorage.removeItem('fq_token'); }catch(_){} }
+  }
+}
+
+function showRegister(){document.getElementById('loginForm').style.display='none';document.getElementById('regForm').style.display='block';}
+function showLogin(){document.getElementById('regForm').style.display='none';document.getElementById('loginForm').style.display='block';}
+async function register(){
+  const name=document.getElementById('rg-name').value.trim(), email=document.getElementById('rg-email').value.trim().toLowerCase(), password=document.getElementById('rg-pass').value, phone=document.getElementById('rg-phone').value.trim(), refCode=document.getElementById('rg-ref').value.trim().toUpperCase();
+  if(!name||!email||!password){toast('Fill all required fields');return;}
+  await run(async()=>{
+    const r=await api('POST','/api/auth/register',{name,email,password,phone,refCode});
+    saveToken(r.token); applySession(r); enterApp(); toast('Welcome to FitQuest!');
+  });
+}
+async function login(){
+  const email=document.getElementById('li-email').value.trim().toLowerCase(), password=document.getElementById('li-pass').value;
+  if(!email||!password){toast('Enter your email and password');return;}
+  await run(async()=>{
+    const r=await api('POST','/api/auth/login',{email,password});
+    saveToken(r.token); applySession(r); enterApp();
+  });
+}
+function logout(){
+  unsub.forEach(u=>u&&u()); unsub=[]; token=null;
+  try{ localStorage.removeItem('fq_token'); localStorage.removeItem('fq_uid'); }catch(e){}
+  me=null; document.body.classList.remove('staff');
+  document.getElementById('appView').style.display='none'; document.getElementById('authView').style.display='flex';
+  document.getElementById('li-pass').value='';
+}
+
+function enterApp(){
+  document.getElementById('authView').style.display='none';
+  document.getElementById('appView').style.display='block';
+  document.getElementById('whoami').textContent=me.name+' · '+me.role;
+  document.body.classList.toggle('staff',me.role==='staff');
+  document.getElementById('topAvatar').src=avatarFor(me,me.id);
+  buildTabs();
+  watchNotifs();
+}
+function buildTabs(){
+  const memberTabs=[['home','Home'],['quests','Quests'],['teamup','Team-Up'],['seasonal','Seasonal'],['rank','Rank'],['leaderboard','Leaderboard'],['rewards','Rewards'],['ach','Achievements'],['referral','Referral'],['loyalty','Loyalty'],['history','History'],['profile','Profile']];
+  const staffTabs=[['dash','Dashboard'],['squests','Quests'],['verify','Verifications'],['sseasonal','Seasonal'],['srewards','Rewards'],['redemptions','Redemptions'],['members','Members'],['sleader','Leaderboard'],['audit','Audit Log']];
+  const tabs = me.role==='staff'?staffTabs:memberTabs;
+  document.getElementById('tabs').innerHTML = tabs.map((t,i)=>`<div class="tab${i===0?' active':''}" data-t="${t[0]}" onclick="switchTab('${t[0]}')">${t[1]}</div>`).join('');
+  document.getElementById('views').innerHTML = tabs.map(t=>`<div class="view" id="v-${t[0]}"></div>`).join('');
+  switchTab(tabs[0][0]);
+}
+function openProfile(){
+  if(!me) return;
+  if(me.role==='staff'){ openStaffProfile(); return; }
+  switchTab('profile'); window.scrollTo({top:0,behavior:'smooth'});
+}
+function openStaffProfile(){
+  const u=me;
+  openModal(`<div class="staffprof"><img class="avbig" src="${avatarFor(u,me.id)}" alt="">
+    <span class="pill ok">Staff</span><h2 style="margin-top:6px">${esc(u.name)}</h2>
+    <p class="muted">${esc(u.email)}${u.phone?' · '+esc(u.phone):''}</p>
+    <p class="muted" style="font-size:.85rem">Account created ${dateStr(u.createdAt)}</p></div>
+  <div class="field" style="margin-top:14px"><label>Avatar</label><div class="avpick">${['av1','av2','av3'].map(a=>`<label><input type="radio" name="sp-av" value="${a}" ${avatarFor(u,me.id).endsWith(a+'.png')?'checked':''}><img src="${IMG}${a}.png" alt="Avatar ${a.slice(2)}"></label>`).join('')}</div></div>
+  <div class="field"><label>Phone</label><input id="sp-phone" value="${esc(u.phone||'')}"></div>
+  <div class="row"><button class="btn primary" onclick="saveStaffProfile()">Save changes</button><button class="btn" onclick="closeModal()">Close</button></div>`);
+}
+async function saveStaffProfile(){
+  const av=document.querySelector('input[name=sp-av]:checked');
+  const patch={phone:document.getElementById('sp-phone').value.trim()};
+  if(av) patch.avatar=av.value;
+  await run(async()=>{
+    await api('PATCH','/api/profile',patch); await refreshMe();
+    document.getElementById('topAvatar').src=avatarFor(me,me.id);
+    closeModal(); toast('Profile saved');
+  });
+}
+function switchTab(name){
+  const chip=document.getElementById('userChip'); if(chip) chip.classList.toggle('active',name==='profile');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.t===name));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id==='v-'+name));
+  ({home:renderHome,quests:renderMemberQuests,rewards:renderMemberRewards,ach:renderAch,profile:renderProfile,rank:renderRank,sleader:renderStaffLeaderboard,
+    teamup:renderTeamup,seasonal:renderSeasonalMember,leaderboard:renderLeaderboard,referral:renderReferral,loyalty:renderLoyalty,history:renderHistory,
+    dash:renderStaffDash,squests:renderStaffQuests,verify:renderVerify,srewards:renderStaffRewards,redemptions:renderRedemptions,members:renderMembers,
+    sseasonal:renderSeasonalStaff,audit:renderAudit})[name]?.();
+}
+async function refreshMe(){
+  const r=await api('GET','/api/auth/me'); me=r.user; if(r.tz) APP_TZ=r.tz;
+  document.getElementById('whoami').textContent=me.name+' · '+me.role;
+}
+
+
+async function watchNotifs(){
+  const q = db.collection('notifications').where('userId','==',me.id).where('read','==',false);
+  const un = q.onSnapshot(snap=>{ document.getElementById('notifDot').style.display = snap.size>0?'block':'none'; });
+  unsub.push(un);
+}
+async function openNotifs(){
+  const snap = await db.collection('notifications').where('userId','==',me.id).orderBy('createdAt','desc').limit(20).get();
+  const items = snap.docs.map(d=>d.data());
+  openModal(`<h3 style="margin-bottom:12px">Notifications</h3>${items.length?items.map(n=>`<div class="card" style="margin-bottom:8px;${n.read?'opacity:.6':''}"><p style="font-size:.85rem">${esc(n.msg)}</p><p class="muted" style="font-size:.7rem;margin-top:4px">${new Date(n.createdAt).toLocaleString()}</p></div>`).join(''):'<p class="muted">No notifications yet.</p>'}
+  <button class="btn" style="width:100%;margin-top:8px" onclick="markAllRead()">Mark all read</button>`);
+}
+async function markAllRead(){
+  await run(async()=>{ await api('POST','/api/notifications/read-all'); closeModal(); toast('Notifications cleared'); });
+}
+
+// ---- MEMBER: HOME ----
+async function renderHome(){
+  await refreshMe();
+  const xpInLevel = me.xp%100;
+  const [h, questsSnap, rewardsSnap] = await Promise.all([
+    api('GET','/api/home'),
+    db.collection('quests').where('active','==',true).limit(3).get(),
+    db.collection('rewards').where('active','==',true).get(),
+  ]);
+  const ckToday = { empty: !h.checkedInToday };
+  const todayQuests = h.questsToday;
+  const rewards = rewardsSnap.docs.map(d=>d.data()).sort((a,b)=>a.cost-b.cost);
+  const nextReward = rewards.find(r=>r.cost>me.rp) || rewards[0];
+  const hour=new Date().getHours(); const greet = hour<12?'Good morning':hour<18?'Good afternoon':'Good evening';
+  const el = document.getElementById('v-home');
+  el.innerHTML = `
+  <img class="banner" src="/img/banner.png" alt="FitQuest: level up your health. A motivation-based fitness center.">
+  <h2 style="margin-bottom:14px">${greet}, ${esc((me.name||'').split(' ')[0])}</h2>
+  <div class="grid g2">
+    <div class="card"><p class="muted">Level</p><h2>${me.level}</h2>
+      <div class="bar"><div style="width:${xpInLevel}%"></div></div><p class="muted" style="margin-top:6px;font-size:.78rem">${xpInLevel}/100 XP to next level</p></div>
+    <div class="card"><p class="muted">Reward Points</p><h2 style="color:var(--rp)">${me.rp} RP</h2></div>
+    <div class="card"><p class="muted">Current streak</p><h2 style="display:flex;align-items:center;gap:8px">${me.streak} <span style="color:var(--xp)">${svgIcon('flame',26)}</span></h2><p class="muted" style="font-size:.78rem">Longest: ${me.longestStreak}</p></div>
+    <div class="card"><p class="muted">Rank</p><h2 style="display:flex;align-items:center;gap:8px">${rankBadge(rankInfo(me).rank,34)}${rankInfo(me).rank.name}</h2></div>
+    <div class="card"><p class="muted">Total XP</p><h2 style="color:var(--xp)">${me.xp}</h2></div>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <p style="font-weight:700;margin-bottom:8px">Today's progress</p>
+    <p style="font-size:.9rem"><span style="display:inline-flex;vertical-align:middle;margin-right:6px;color:${ckToday.empty?'var(--muted)':'var(--ok)'}">${svgIcon(ckToday.empty?'circleoutline':'check',18)}</span>Gym check-in</p>
+    <p style="font-size:.9rem;margin-top:4px"><span style="display:inline-flex;vertical-align:middle;margin-right:6px;color:${todayQuests>0?'var(--ok)':'var(--muted)'}">${svgIcon(todayQuests>0?'check':'circleoutline',18)}</span>${todayQuests} quest(s) completed today</p>
+    ${ckToday.empty?`<button class="btn primary small" style="margin-top:10px" onclick="checkIn()">Check in (+10 XP, +5 RP)</button>`:`<span class="pill ok" style="margin-top:10px;display:inline-block">Checked in today</span>`}
+  </div>
+  <h3 style="margin:18px 0 10px">Available quests</h3>
+  <div class="grid g3">${questsSnap.docs.map(d=>{const q=d.data();return `<div class="card"><p style="font-weight:700">${esc(q.title)}</p><p class="muted" style="font-size:.8rem">${esc(q.category)} · ${esc(q.difficulty)}</p><div class="row" style="margin-top:8px"><span class="pill xp">+${q.xpReward} XP</span><span class="pill rp">+${q.rpReward} RP</span></div></div>`;}).join('')||'<p class="muted">No active quests.</p>'}</div>
+  ${nextReward?`<h3 style="margin:18px 0 10px">Next reward</h3><div class="card"><p style="font-weight:700">${esc(nextReward.name)}</p><span class="pill rp" style="margin-top:6px;display:inline-block">${nextReward.cost} RP</span></div>`:''}`;
+}
+// ---- MEMBER: HISTORY ----
+async function renderHistory(){
+  const [xpSnap,rpSnap] = await Promise.all([
+    db.collection('xp_tx').where('userId','==',me.id).orderBy('createdAt','desc').limit(30).get(),
+    db.collection('rp_tx').where('userId','==',me.id).orderBy('createdAt','desc').limit(30).get(),
+  ]);
+  const items=[...xpSnap.docs.map(d=>({...d.data(),kind:'XP'})),...rpSnap.docs.map(d=>({...d.data(),kind:'RP'}))].sort((a,b)=>b.createdAt-a.createdAt).slice(0,40);
+  document.getElementById('v-history').innerHTML = `<h2 style="margin-bottom:12px">XP / RP History</h2><div class="card">${items.length?items.map(t=>`<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:.85rem">${new Date(t.createdAt).toLocaleDateString()} · ${esc(t.source)}</span><strong style="color:${t.amount>=0?'var(--xp)':'var(--danger)'}">${t.amount>=0?'+':''}${t.amount} ${t.kind}</strong></div>`).join(''):'<p class="muted">No transactions yet.</p>'}</div>`;
+}
+
+// ---- MEMBER: QUESTS ----
+async function renderMemberQuests(){
+  const el = document.getElementById('v-quests');
+  const questsSnap = await db.collection('quests').where('active','==',true).get();
+  const compSnap = await db.collection('completions').where('userId','==',me.id).get();
+  const comps = compSnap.docs.map(d=>d.data());
+  el.innerHTML = `<h2 style="margin-bottom:12px">Quests</h2><div class="grid g3">${questsSnap.docs.map(d=>{
+    const q=d.data(), qid=d.id;
+    const pending = comps.find(c=>c.questId===qid && c.status==='pending');
+    const approvedNonRepeat = !q.repeatable && comps.find(c=>c.questId===qid && c.status==='approved');
+    let btn;
+    if(approvedNonRepeat) btn=`<span class="pill ok">Completed</span>`;
+    else if(pending) btn=`<span class="pill pending">Pending verification</span>`;
+    else btn=`<button class="btn primary small" onclick="submitQuest('${qid}')">Submit completion</button>`;
+    return `<div class="card"><p style="font-weight:700">${esc(q.title)}</p><p class="muted" style="font-size:.8rem">${esc(q.category)} · ${esc(q.difficulty)}</p><div class="row" style="margin:8px 0"><span class="pill xp">+${q.xpReward} XP</span><span class="pill rp">+${q.rpReward} RP</span></div>${btn}</div>`;
+  }).join('')||'<p class="muted">No quests available.</p>'}</div>`;
+}
+async function submitQuest(questId){
+  await run(async()=>{ await api('POST','/api/quests/'+questId+'/submit'); toast('Submitted for staff verification'); renderMemberQuests(); }, ()=>renderMemberQuests());
+}
+
+// ---- MEMBER: REWARDS ----
+async function renderMemberRewards(){
+  await refreshMe();
+  const el = document.getElementById('v-rewards');
+  const snap = await db.collection('rewards').where('active','==',true).get();
+  el.innerHTML = `<h2 style="margin-bottom:4px">Rewards</h2><p class="muted" style="margin-bottom:12px">Balance: <strong style="color:var(--rp)">${me.rp} RP</strong></p><div class="grid g3">${snap.docs.map(d=>{
+    const r=d.data(); const out = r.availableQty<=0;
+    return `<div class="card">${rewardImage(r.name)}<p style="font-weight:700">${esc(r.name)}</p><p class="pill rp" style="margin:8px 0;display:inline-block">${r.cost} RP</p><p class="muted" style="font-size:.75rem">${out?'Out of stock':r.availableQty+' left'}</p>
+    <button class="btn violet small" style="margin-top:8px" ${out||me.rp<r.cost?'disabled':''} onclick="redeemReward('${d.id}')">Redeem</button></div>`;
+  }).join('')}</div>`;
+}
+async function redeemReward(id){
+  await run(async()=>{
+    await api('POST','/api/rewards/'+id+'/redeem');
+    toast('RP reserved — redemption requested, awaiting staff approval'); await refreshMe(); renderMemberRewards();
+  }, ()=>renderMemberRewards());
+}
+async function cancelRedemption(redId){
+  await run(async()=>{
+    await api('POST','/api/redemptions/'+redId+'/cancel');
+    toast('Redemption cancelled — RP refunded'); await refreshMe(); renderProfile();
+  }, ()=>renderProfile());
+}
+
+// ---- MEMBER: ACHIEVEMENTS ----
+// ---- MEMBER: PROFILE ----
+// ---- STAFF: DASHBOARD ----
+async function renderStaffDash(){
+  const [members,quests,pendingV,pendingR] = await Promise.all([
+    db.collection('users').where('role','==','member').get(),
+    db.collection('quests').where('active','==',true).get(),
+    db.collection('completions').where('status','==','pending').get(),
+    db.collection('redemptions').where('status','==','pending').get(),
+  ]);
+  document.getElementById('v-dash').innerHTML = `<img class="banner" src="/img/banner.png" alt="FitQuest: level up your health"><h2 style="margin-bottom:12px">Staff Dashboard</h2><div class="grid g3">
+  <div class="card statbox"><p class="muted">Members</p><div class="n">${members.size}</div></div>
+  <div class="card statbox"><p class="muted">Active quests</p><div class="n">${quests.size}</div></div>
+  <div class="card statbox"><p class="muted">Pending verifications</p><div class="n" style="color:var(--xp)">${pendingV.size}</div></div>
+  <div class="card statbox"><p class="muted">Pending redemptions</p><div class="n" style="color:var(--rp)">${pendingR.size}</div></div>
+  </div>`;
+}
+
+// ---- STAFF: QUESTS CRUD ----
+async function renderStaffQuests(){
+  const snap = await db.collection('quests').get();
+  document.getElementById('v-squests').innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><h2>Manage Quests</h2><button class="btn primary small" onclick="questForm()">+ New quest</button></div>
+  <div class="grid g3">${snap.docs.map(d=>{const q=d.data();return `<div class="card"><p style="font-weight:700">${esc(q.title)}</p><p class="muted" style="font-size:.8rem">${esc(q.category)} · ${esc(q.difficulty)}</p><div class="row" style="margin:8px 0"><span class="pill xp">+${q.xpReward} XP</span><span class="pill rp">+${q.rpReward} RP</span></div>
+  <div class="row"><button class="btn small" onclick="toggleQuest('${d.id}',${!q.active})">${q.active?'Deactivate':'Activate'}</button><button class="btn danger small" onclick="deleteQuest('${d.id}')">Delete</button></div></div>`;}).join('')}</div>`;
+}
+function questForm(){
+  openModal(`<h3 style="margin-bottom:12px">New Quest</h3>
+  <div class="field"><label>Title</label><input id="qf-title"></div>
+  <div class="field"><label>Category</label><select id="qf-cat"><option>Cardio</option><option>Strength</option><option>Upper Body</option><option>Lower Body</option><option>Glutes</option><option>Flexibility</option></select></div>
+  <div class="field"><label>Difficulty</label><select id="qf-diff"><option>Easy</option><option>Medium</option><option>Hard</option></select></div>
+  <div class="field"><label>Repeatable</label><select id="qf-rep"><option value="true">Yes</option><option value="false">No</option></select></div>
+  <button class="btn primary" style="width:100%" onclick="saveQuest()">Create</button>`);
+}
+async function saveQuest(){
+  const title=document.getElementById('qf-title').value.trim(); if(!title){toast('Title required');return;}
+  await db.doc('quests/'+uid()).set({title,category:document.getElementById('qf-cat').value,difficulty:document.getElementById('qf-diff').value,xpReward:10,rpReward:10,active:true,repeatable:document.getElementById('qf-rep').value==='true',createdAt:Date.now()});
+  closeModal(); toast('Quest created'); renderStaffQuests();
+}
+async function toggleQuest(id,val){ await db.doc('quests/'+id).update({active:val}); renderStaffQuests(); }
+async function deleteQuest(id){ await db.doc('quests/'+id).delete(); renderStaffQuests(); }
+
+// ---- STAFF: VERIFICATIONS ----
+async function renderVerify(){
+  const snap = await db.collection('completions').where('status','==','pending').orderBy('submittedAt','asc').get();
+  const ssnap = await db.collection('seasonal_completions').where('status','==','pending').orderBy('submittedAt','asc').get();
+  const el = document.getElementById('v-verify');
+  const rows = await Promise.all(snap.docs.map(async d=>{
+    const c=d.data(); const [u,q] = await Promise.all([db.doc('users/'+c.userId).get(), db.doc('quests/'+c.questId).get()]);
+    return {id:d.id,c,user:u.data(),title:q.data()?.title};
+  }));
+  const srows = await Promise.all(ssnap.docs.map(async d=>{
+    const c=d.data(); const [u,s] = await Promise.all([db.doc('users/'+c.userId).get(), db.doc('seasonal/'+c.seasonalId).get()]);
+    return {id:d.id,c,user:u.data(),title:s.data()?.name};
+  }));
+  if(!rows.length && !srows.length){ el.innerHTML='<h2 style="margin-bottom:12px">Verifications</h2><p class="muted">No pending submissions.</p>'; return; }
+  el.innerHTML = `<h2 style="margin-bottom:12px">Verifications</h2><div class="grid g3">
+  ${rows.map(r=>`<div class="card"><p style="font-weight:700">${esc(r.title||'Quest')}</p><p class="muted" style="font-size:.8rem">${esc(r.user?.name||'Member')}</p><p class="muted" style="font-size:.75rem">${new Date(r.c.submittedAt).toLocaleString()}</p>
+  <div class="row" style="margin-top:10px"><button class="btn primary small" onclick="verifyDecision('${r.id}','approved')">Approve</button><button class="btn danger small" onclick="verifyDecision('${r.id}','rejected')">Reject</button></div></div>`).join('')}
+  ${srows.map(r=>`<div class="card"><p style="font-weight:700;display:flex;align-items:center;gap:8px"><span style="color:var(--xp);display:inline-flex">${svgIcon('medal',18)}</span>${esc(r.title||'Seasonal')}</p><p class="muted" style="font-size:.8rem">${esc(r.user?.name||'Member')}</p><p class="muted" style="font-size:.75rem">${new Date(r.c.submittedAt).toLocaleString()}</p>
+  <div class="row" style="margin-top:10px"><button class="btn primary small" onclick="verifySeasonalDecision('${r.id}','approved')">Approve</button><button class="btn danger small" onclick="verifySeasonalDecision('${r.id}','rejected')">Reject</button></div></div>`).join('')}
+  </div>`;
+}
+async function verifyDecision(compId, decision){
+  await run(async()=>{
+    await api('POST','/api/completions/'+compId+'/decision',{decision});
+    toast(decision==='approved'?'Approved':'Rejected'); renderVerify();
+  }, ()=>renderVerify());
+}
+
+// ---- STAFF: REWARDS CRUD ----
+async function renderStaffRewards(){
+  const snap = await db.collection('rewards').get();
+  document.getElementById('v-srewards').innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><h2>Manage Rewards</h2><button class="btn primary small" onclick="rewardForm()">+ New reward</button></div>
+  <div class="grid g3">${snap.docs.map(d=>{const r=d.data();return `<div class="card">${rewardImage(r.name)}<p style="font-weight:700">${esc(r.name)}</p><p class="pill rp" style="margin:6px 0;display:inline-block">${r.cost} RP</p><p class="muted" style="font-size:.75rem">${r.availableQty}/${r.totalQty} available · ${r.active?'active':'inactive'}</p>
+  <div class="row" style="margin-top:8px"><button class="btn small" onclick="toggleReward('${d.id}',${!r.active})">${r.active?'Deactivate':'Activate'}</button><button class="btn danger small" onclick="deleteReward('${d.id}')">Delete</button></div></div>`;}).join('')}</div>`;
+}
+function rewardForm(){
+  openModal(`<h3 style="margin-bottom:12px">New Reward</h3><div class="field"><label>Name</label><input id="rf-name"></div><div class="field"><label>Cost (RP)</label><input id="rf-cost" type="number" value="1000"></div><div class="field"><label>Quantity</label><input id="rf-qty" type="number" value="20"></div><button class="btn primary" style="width:100%" onclick="saveReward()">Create</button>`);
+}
+async function saveReward(){
+  const name=document.getElementById('rf-name').value.trim(); if(!name){toast('Name required');return;}
+  const qty=parseInt(document.getElementById('rf-qty').value)||0;
+  await db.doc('rewards/'+uid()).set({name,cost:parseInt(document.getElementById('rf-cost').value)||0,totalQty:qty,availableQty:qty,redeemedQty:0,active:true});
+  closeModal(); toast('Reward created'); renderStaffRewards();
+}
+async function toggleReward(id,val){ await db.doc('rewards/'+id).update({active:val}); renderStaffRewards(); }
+async function deleteReward(id){ await db.doc('rewards/'+id).delete(); renderStaffRewards(); }
+
+// ---- STAFF: REDEMPTIONS ----
+async function renderRedemptions(){
+  const snap = await db.collection('redemptions').where('status','==','pending').orderBy('requestedAt','asc').get();
+  const el = document.getElementById('v-redemptions');
+  if(snap.empty){ el.innerHTML='<h2 style="margin-bottom:12px">Redemptions</h2><p class="muted">No pending redemptions.</p>'; return; }
+  const rows = await Promise.all(snap.docs.map(async d=>{ const r=d.data(); const u=await db.doc('users/'+r.userId).get(); return {id:d.id,r,user:u.data()}; }));
+  el.innerHTML = `<h2 style="margin-bottom:12px">Redemptions</h2><div class="grid g3">${rows.map(x=>`<div class="card"><p style="font-weight:700">${esc(x.r.rewardName)}</p><p class="muted" style="font-size:.8rem">${esc(x.user?.name||'Member')} · ${x.r.cost} RP</p>
+  <div class="row" style="margin-top:10px"><button class="btn primary small" onclick="redemptionDecision('${x.id}','approved')">Approve</button><button class="btn danger small" onclick="redemptionDecision('${x.id}','rejected')">Reject</button></div></div>`).join('')}</div>`;
+}
+async function redemptionDecision(redId, decision){
+  await run(async()=>{
+    const r=await api('POST','/api/redemptions/'+redId+'/decision',{decision});
+    toast(r.note||(decision==='approved'?'Approved':'Rejected')); renderRedemptions();
+  }, ()=>renderRedemptions());
+}
+
+// ---- STAFF: MEMBERS ----
+// ---- MEMBER: TEAM-UP ----
+async function renderTeamup(){
+  const mine = await db.collection('team_ups').where('memberIds','array-contains',me.id).where('status','==','active').get();
+  const open = await db.collection('team_ups').where('status','==','active').get();
+  const el = document.getElementById('v-teamup');
+  const myTeam = mine.docs[0];
+  if(myTeam){
+    const t=myTeam.data();
+    el.innerHTML = `<h2 style="margin-bottom:12px">Team-Up</h2><div class="card"><p style="font-weight:700">${esc(t.name)}</p><p class="muted" style="font-size:.85rem">${t.memberIds.length} members · Goal: ${t.goalTarget} approved quests</p>
+    <div class="bar" style="margin-top:8px"><div style="width:${Math.min(100,(t.progress||0)/t.goalTarget*100)}%"></div></div><p class="muted" style="font-size:.78rem;margin-top:4px">${t.progress||0}/${t.goalTarget}</p>
+    <div class="row" style="margin-top:8px"><span class="pill xp">+${t.xpReward} XP</span><span class="pill rp">+${t.rpReward} RP</span></div>
+    <button class="btn danger small" style="margin-top:10px" onclick="leaveTeam('${myTeam.id}')">Leave team</button></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><h2>Team-Up</h2><button class="btn primary small" onclick="teamForm()">+ Create team</button></div>
+  <div class="grid g3">${open.docs.map(d=>{const t=d.data();return `<div class="card"><p style="font-weight:700">${esc(t.name)}</p><p class="muted" style="font-size:.8rem">${t.memberIds.length} members · Goal ${t.goalTarget}</p><button class="btn violet small" style="margin-top:8px" onclick="joinTeam('${d.id}')">Join</button></div>`;}).join('')||'<p class="muted">No open teams. Create one!</p>'}</div>`;
+}
+function teamForm(){
+  openModal(`<h3 style="margin-bottom:12px">Create Team-Up</h3><div class="field"><label>Team name</label><input id="tf-name"></div><div class="field"><label>Goal (approved quests to complete together)</label><input id="tf-goal" type="number" value="10"></div><button class="btn primary" style="width:100%" onclick="createTeam()">Create</button>`);
+}
+async function createTeam(){
+  const name=document.getElementById('tf-name').value.trim(); if(!name){toast('Name required');return;}
+  const goalTarget=parseInt(document.getElementById('tf-goal').value)||10;
+  await run(async()=>{ await api('POST','/api/teams',{name,goalTarget}); closeModal(); toast('Team created'); renderTeamup(); });
+}
+async function joinTeam(id){
+  await run(async()=>{ await api('POST','/api/teams/'+id+'/join'); toast('Joined team'); renderTeamup(); }, ()=>renderTeamup());
+}
+async function leaveTeam(id){
+  await run(async()=>{ await api('POST','/api/teams/'+id+'/leave'); toast('Left team'); renderTeamup(); }, ()=>renderTeamup());
+}
+
+// ---- SEASONAL (member) ----
+async function renderSeasonalMember(){
+  const now=Date.now();
+  const snap = await db.collection('seasonal').get();
+  const active = snap.docs.filter(d=>{const s=d.data(); return s.startDate<=now && now<=s.endDate;});
+  const compSnap = await db.collection('seasonal_completions').where('userId','==',me.id).get();
+  const comps = compSnap.docs.map(d=>d.data());
+  document.getElementById('v-seasonal').innerHTML = `<h2 style="margin-bottom:12px">Seasonal Challenges</h2><div class="grid g3">${active.map(d=>{
+    const s=d.data(); const c=comps.find(x=>x.seasonalId===d.id);
+    let btn = !c ? `<button class="btn primary small" onclick="submitSeasonal('${d.id}')">Submit completion</button>` : `<span class="pill ${c.status==='approved'?'ok':c.status==='rejected'?'rej':'pending'}">${c.status}</span>`;
+    return `<div class="card"><p style="font-weight:700">${esc(s.name)}</p><p class="muted" style="font-size:.8rem">${esc(s.description||'')}</p><p class="muted" style="font-size:.72rem;margin:4px 0">Ends ${new Date(s.endDate).toLocaleDateString()}</p><div class="row" style="margin:6px 0"><span class="pill xp">+${s.xpReward} XP</span><span class="pill rp">+${s.rpReward} RP</span></div>${btn}</div>`;
+  }).join('')||'<p class="muted">No active seasonal challenges right now.</p>'}</div>`;
+}
+async function submitSeasonal(seasonalId){
+  await run(async()=>{ await api('POST','/api/seasonal/'+seasonalId+'/submit'); toast('Submitted for staff verification'); renderSeasonalMember(); }, ()=>renderSeasonalMember());
+}
+
+// ---- LEADERBOARD ----
+// ---- REFERRAL ----
+async function renderReferral(){
+  await refreshMe();
+  const snap = await db.collection('referrals').where('referrerId','==',me.id).get();
+  document.getElementById('v-referral').innerHTML = `<h2 style="margin-bottom:12px">Referrals</h2><div class="card" style="margin-bottom:14px"><p class="muted">Your referral code</p><h2 style="color:var(--xp)">${esc(me.referralCode||'')}</h2><p class="muted" style="font-size:.8rem;margin-top:6px">Share this code — earn +100 RP when a friend registers and completes their first quest.</p></div>
+  <h3 style="margin-bottom:8px">History (${snap.size})</h3><div class="card">${snap.docs.length?snap.docs.map(d=>{const r=d.data();return `<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:.85rem">${new Date(r.createdAt).toLocaleDateString()}</span><span class="pill ${r.rewarded?'ok':'pending'}">${r.rewarded?'Rewarded':'Pending'}</span></div>`;}).join(''):'<p class="muted">No referrals yet.</p>'}</div>`;
+}
+
+// ---- LOYALTY ----
+async function renderLoyalty(){
+  await refreshMe();
+  const stamps = me.loyaltyStamps||0; const cur = stamps%12;
+  document.getElementById('v-loyalty').innerHTML = `<h2 style="margin-bottom:12px">Loyalty</h2><p class="muted" style="margin-bottom:10px">Staff add 1 stamp each time you renew · every 12th stamp pays +500 RP</p>
+  <div class="stampgrid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;max-width:320px">${Array.from({length:12}).map((_,i)=>`<div style="aspect-ratio:1;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--xp);background:${i<cur?'var(--xp-dim)':'var(--surface2)'};border:1px solid var(--border)">${i<cur?svgIcon('star',20):''}</div>`).join('')}</div>
+  <p class="muted" style="margin-top:10px">Total stamps earned: ${stamps}</p>`;
+}
+
+// ---- STAFF: SEASONAL CRUD ----
+async function renderSeasonalStaff(){
+  const snap = await db.collection('seasonal').get();
+  const now=Date.now();
+  document.getElementById('v-sseasonal').innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:12px"><h2>Seasonal Challenges</h2><button class="btn primary small" onclick="seasonalForm()">+ New challenge</button></div>
+  <div class="grid g3">${snap.docs.map(d=>{const s=d.data(); const active=s.startDate<=now&&now<=s.endDate;return `<div class="card"><p style="font-weight:700">${esc(s.name)}</p><p class="muted" style="font-size:.75rem">${new Date(s.startDate).toLocaleDateString()} → ${new Date(s.endDate).toLocaleDateString()}</p><span class="pill ${active?'ok':'rej'}">${active?'Active':'Inactive'}</span> <button class="btn small" style="margin-left:8px" onclick="deleteSeasonal('${d.id}')">Delete</button></div>`;}).join('')||'<p class="muted">None yet.</p>'}</div>`;
+}
+function seasonalForm(){
+  openModal(`<h3 style="margin-bottom:12px">New Seasonal Challenge</h3><div class="field"><label>Name</label><input id="sf-name"></div><div class="field"><label>Description</label><input id="sf-desc"></div>
+  <div class="field"><label>Start date</label><input id="sf-start" type="date"></div><div class="field"><label>End date</label><input id="sf-end" type="date"></div>
+  <button class="btn primary" style="width:100%" onclick="saveSeasonal()">Create</button>`);
+}
+async function saveSeasonal(){
+  const name=document.getElementById('sf-name').value.trim(); if(!name){toast('Name required');return;}
+  const start=document.getElementById('sf-start').value, end=document.getElementById('sf-end').value;
+  if(!start||!end){toast('Pick a start and end date');return;}
+  await run(async()=>{
+    await api('POST','/api/seasonal',{name,description:document.getElementById('sf-desc').value.trim(),start,end});
+    closeModal(); toast('Seasonal challenge created'); renderSeasonalStaff();
+  });
+}
+async function verifySeasonalDecision(id,decision){
+  await run(async()=>{
+    await api('POST','/api/seasonal-completions/'+id+'/decision',{decision});
+    toast(decision==='approved'?'Approved':'Rejected'); renderVerify();
+  }, ()=>renderVerify());
+}
+
+// ---- STAFF: AUDIT LOG + MANUAL ADJUSTMENTS ----
+function adjustForm(userId,name){
+  openModal(`<h3 style="margin-bottom:12px">Adjust balance — ${esc(name)}</h3>
+  <div class="field"><label>XP change (+/-)</label><input id="adj-xp" type="number" value="0"></div>
+  <div class="field"><label>RP change (+/-)</label><input id="adj-rp" type="number" value="0"></div>
+  <div class="field"><label>Reason (required)</label><input id="adj-reason"></div>
+  <button class="btn primary" style="width:100%" onclick="applyAdjust('${userId}')">Apply</button>`);
+}
+async function applyAdjust(userId){
+  const xp=parseInt(document.getElementById('adj-xp').value)||0, rp=parseInt(document.getElementById('adj-rp').value)||0;
+  const reason=document.getElementById('adj-reason').value.trim();
+  if(!reason){toast('Reason is required');return;}
+  await run(async()=>{
+    await api('POST','/api/members/'+userId+'/adjust',{xp,rp,reason});
+    closeModal(); toast('Adjustment applied'); renderMembers();
+  });
+}
+
+async function renderAudit(){
+  const snap = await db.collection('audit_logs').orderBy('createdAt','desc').limit(30).get();
+  document.getElementById('v-audit').innerHTML = `<h2 style="margin-bottom:12px">Audit Log</h2><div class="card">${snap.docs.length?snap.docs.map(d=>{const a=d.data();return `<div style="padding:8px 0;border-bottom:1px solid var(--border)"><p style="font-size:.85rem"><strong>${esc(a.staffName)}</strong> — ${esc(a.action)}</p><p class="muted" style="font-size:.75rem">Reason: ${esc(a.reason)} · ${new Date(a.createdAt).toLocaleString()}</p></div>`;}).join(''):'<p class="muted">No entries yet.</p>'}</div>`;
+}
+
+
+// ======== FQ 8-BIT: avatars, rank, badges, profile, leaderboards ========
+const IMG='/img/';
+function avatarFor(u,id){ if(u&&['av1','av2','av3'].includes(u.avatar)) return IMG+u.avatar+'.png'; let h=0; String(id||(u&&u.email)||'x').split('').forEach(c=>{h=(h*31+c.charCodeAt(0))>>>0;}); return IMG+['av1','av2','av3'][h%3]+'.png'; }
+const RANKS=[
+  {id:'beginner',name:'Beginner',months:0,label:'1 month'},
+  {id:'rookie',name:'Rookie',months:3,label:'3 months'},
+  {id:'active',name:'Active',months:12,label:'12 months'},
+  {id:'hero',name:'FitQuest Hero',months:24,label:'24 months and above'}];
+function rankInfo(u){
+  const start=u.membershipStart||u.createdAt||Date.now();
+  const months=Math.max(0,Math.floor((Date.now()-start)/(30.44*86400000)));
+  let i=0; RANKS.forEach((r,k)=>{ if(months>=r.months) i=k; });
+  const next=RANKS[i+1]||null;
+  return {rank:RANKS[i],index:i,months,next,left:next?next.months-months:0,pct:next?Math.round((months-RANKS[i].months)/(next.months-RANKS[i].months)*100):100};
+}
+function rankBadge(r,size){ size=size||30; return `<img class="rb r-${r.id}" src="${IMG}${r.id==='hero'?'trophy':'rank_1'}.png" width="${size}" height="${size}" alt="">`; }
+function rankChip(u){ const r=rankInfo(u).rank; return `<span class="rankchip">${rankBadge(r,24)}<span>${r.name}</span></span>`; }
+function achSprite(a,size){
+  const m={medal:'ribbon',check:'heart',flame:'rank_0',dumbbell:'rank_1',star:'coin',trophy:'trophy',users:'gift1',gift:'gift2',crown:'trophy'};
+  return `<img src="${IMG}${m[a.icon]||'ribbon'}.png" style="height:${size||56}px;width:auto;image-rendering:pixelated" alt="">`;
+}
+function dateStr(t){ return new Date(t).toLocaleDateString(); }
+
+// ---- ACHIEVEMENTS & BADGES ----
+async function renderAch(){
+  const snap=await db.collection('member_achievements').where('userId','==',me.id).get();
+  const ids=snap.docs.map(d=>d.data().achId), pct=Math.round(ids.length/ACH.length*100);
+  document.getElementById('v-ach').innerHTML=`<h2 style="margin-bottom:10px">Achievements &amp; Badges</h2>
+  <div class="card" style="margin-bottom:14px"><p><b>${ids.length} of ${ACH.length}</b> badges unlocked</p><div class="bar"><div style="width:${pct}%"></div></div></div>
+  <div class="badges">${ACH.map(a=>{const has=ids.includes(a.id);return `<div class="card badge${has?'':' locked'}">${achSprite(a,56)}<p class="nm">${a.name}</p><p class="muted" style="font-size:.75rem">${has?'Unlocked':'Locked'}</p></div>`;}).join('')}</div>`;
+}
+
+// ---- RANK ----
+async function renderRank(){
+  await refreshMe(); const ri=rankInfo(me);
+  document.getElementById('v-rank').innerHTML=`<h2 style="margin-bottom:12px">Rank</h2>
+  <div class="card" style="margin-bottom:14px;display:flex;gap:16px;align-items:center;flex-wrap:wrap">${rankBadge(ri.rank,72)}
+    <div style="flex:1;min-width:200px"><p class="muted">Current rank</p><h2>${ri.rank.name}</h2>
+    ${ri.next?`<div class="bar"><div style="width:${ri.pct}%"></div></div><p class="muted" style="margin-top:6px;font-size:.8rem">${ri.left} more month(s) to reach ${ri.next.name}</p>`:`<p class="muted" style="margin-top:6px">You hold the top rank. It stays as long as you keep your membership.</p>`}</div></div>
+  <div class="ladder">${RANKS.map((r,i)=>`<div class="card step ${i<ri.index?'done':i===ri.index?'now':'locked'}">${rankBadge(r,52)}<p class="nm">${r.name}</p><p class="muted" style="font-size:.78rem">${r.label}</p></div>`).join('')}</div>
+  <p class="muted" style="margin-top:12px;font-size:.82rem">Rank follows how long you've been a member. It never blocks a quest and doesn't reset once earned.</p>`;
+}
+
+// ---- MEMBER PROFILE ----
+const GOALS=['Build strength','Lose weight','Improve cardio','Get more flexible','Stay active'];
+const CATS=['Cardio','Strength','Upper Body','Lower Body','Glutes','Flexibility'];
+function lbName(u,id){ if(me&&me.role==='staff') return u.name; if(u.hideOnBoard&&id!==me.id) return 'Hidden hero'; return u.nickname||u.name; }
+async function profileData(userId,u){
+  const wk=Date.now()-7*86400000;
+  const [a,c,k,xp,qs,rw,tm]=await Promise.all([
+    db.collection('member_achievements').where('userId','==',userId).get(),
+    db.collection('completions').where('userId','==',userId).where('status','==','approved').get(),
+    db.collection('checkins').where('userId','==',userId).get(),
+    db.collection('xp_tx').where('userId','==',userId).where('createdAt','>=',wk).get(),
+    db.collection('quests').get(),
+    db.collection('rewards').where('active','==',true).get(),
+    db.collection('team_ups').where('memberIds','array-contains',userId).get()]);
+  const cat={}; qs.docs.forEach(d=>cat[d.id]=d.data().category);
+  const mix={}; c.docs.forEach(d=>{const n=cat[d.data().questId]||'Other'; mix[n]=(mix[n]||0)+1;});
+  const days={}; for(let i=6;i>=0;i--) days[dateIso(Date.now()-i*86400000)]=0;
+  xp.docs.forEach(d=>{const t=d.data(), k2=dateIso(t.createdAt); if(k2 in days&&t.amount>0) days[k2]+=t.amount;});
+  return {u,id:userId,ach:a.docs.map(d=>d.data()).sort((x,y)=>y.unlockedAt-x.unlockedAt),quests:c.size,visits:k.size,
+    checkDates:new Set(k.docs.map(d=>d.data().date)),mix,days,rewards:rw.docs.map(d=>d.data()).sort((x,y)=>x.cost-y.cost),
+    teams:tm.docs.map(d=>d.data())};
+}
+function statTile(img,label,val){ return `<div class="card tile"><img src="${IMG}${img}.png" alt=""><div><p class="muted">${label}</p><h3>${val}</h3></div></div>`; }
+function profileHTML(p,own){
+  const u=p.u, ri=rankInfo(u), expiry=u.membershipExpiry||((u.membershipStart||Date.now())+30*86400000), ms=membershipStatus(expiry);
+  const xpIn=(u.xp||0)%100, cls=ms.status==='Active'?'ok':ms.status==='Expiring Soon'?'pending':'rej';
+  const latest=p.ach.slice(0,4).map(x=>ACH.find(a=>a.id===x.achId)).filter(Boolean);
+  const next=p.rewards.find(r=>r.cost>(u.rp||0)), cheapest=p.rewards[0];
+  const nextPct=next?Math.min(100,Math.round((u.rp||0)/next.cost*100)):100;
+  const maxXp=Math.max(30,...Object.values(p.days));
+  const mixTotal=Object.values(p.mix).reduce((s,v)=>s+v,0), mixRows=Object.entries(p.mix).sort((a,b)=>b[1]-a[1]);
+  const cal=Array.from({length:28},(_,i)=>{const d=dateIso(Date.now()-(27-i)*86400000); return `<span class="cell${p.checkDates.has(d)?' on':''}" title="${d}"></span>`;}).join('');
+  const stamps=(u.loyaltyStamps||0)%12;
+  const sec=(t,b)=>`<div class="card psec"><h3>${t}</h3>${b}</div>`;
+  return `<div class="card phead"><img class="avbig" src="${avatarFor(u,p.id)}" alt="">
+    <div><span class="pill ${cls}">${ms.status}</span><h2>${esc(u.nickname||u.name)}</h2>
+    <p class="muted">${u.nickname?esc(u.name)+' · ':''}${esc(u.email)}${u.phone?' · '+esc(u.phone):''}</p>
+    <p class="muted">Member since ${dateStr(u.membershipStart||u.createdAt)}${u.goal?' · Goal: '+esc(u.goal):''}</p>
+    <p class="lvl">Level ${u.level} · ${xpIn}/100 XP</p><div class="bar"><div style="width:${xpIn}%"></div></div>
+    ${own?`<button class="btn small" style="margin-top:10px" onclick="editProfile()">Edit profile</button>`:''}</div>
+    <div class="pbadges">
+      <div class="pb">${rankBadge(ri.rank,52)}<div><span class="muted">Current rank</span><br><b>${ri.rank.name}</b></div></div>
+      <div class="pb">${latest[0]?achSprite(latest[0],52):''}<div><span class="muted">Latest badge</span><br><b>${latest[0]?esc(latest[0].name):'None yet'}</b></div></div>
+    </div></div>
+  ${u.favorites&&u.favorites.length?`<div class="row" style="margin-top:10px">${u.favorites.map(f=>`<span class="pill rp">${esc(f)}</span>`).join('')}</div>`:''}
+  <div class="grid g2" style="margin-top:14px">
+    ${statTile('heart','App access',ms.status==='Expired'?'Expired':ms.days+' day(s) left')}
+    ${statTile('coin','Reward Points',(u.rp||0)+' RP')}
+    ${statTile('rank_1','Total XP',(u.xp||0)+' XP')}
+    ${statTile('ribbon','Badges',p.ach.length+' / '+ACH.length)}
+  </div>
+  <div class="grid g2" style="margin-top:14px">
+    ${sec('Check-ins, last 28 days',`<div class="cal">${cal}</div><p class="muted" style="margin-top:8px;font-size:.8rem">Streak ${u.streak||0} day(s) · best ${u.longestStreak||0} · ${p.visits} visit(s) total</p>`)}
+    ${sec('XP this week',`<div class="wk">${Object.entries(p.days).map(([d,v])=>`<div><i style="height:${Math.max(4,Math.round(v/maxXp*70))}px"></i><span>${'SMTWTFS'[new Date(d+'T12:00:00Z').getUTCDay()]}</span></div>`).join('')}</div><p class="muted" style="margin-top:8px;font-size:.8rem">${Object.values(p.days).reduce((s,v)=>s+v,0)} XP in the last 7 days</p>`)}
+    ${sec('Workout mix',mixRows.length?mixRows.map(([n,v])=>`<div class="mixrow"><span>${esc(n)}</span><div class="bar mini"><div style="width:${Math.round(v/mixTotal*100)}%"></div></div><b>${v}</b></div>`).join(''):'<p class="muted">Complete quests to see your mix.</p>')}
+    ${sec('Next reward',next?`<p><b>${esc(next.name)}</b></p><div class="bar"><div style="width:${nextPct}%"></div></div><p class="muted" style="margin-top:6px;font-size:.8rem">${u.rp||0} / ${next.cost} RP</p>`:cheapest?'<p>You can afford every reward in the store.</p>':'<p class="muted">No rewards listed yet.</p>')}
+    ${sec('Loyalty stamps',`<div class="stamps">${Array.from({length:12},(_,i)=>`<span class="${i<stamps?'on':''}"></span>`).join('')}</div><p class="muted" style="margin-top:8px;font-size:.8rem">${stamps}/12 toward your next +500 RP bonus</p>`)}
+    ${sec('Team-ups',p.teams.length?p.teams.map(t=>`<p style="margin-bottom:4px"><b>${esc(t.name)}</b> <span class="muted">${t.progress||0}/${t.goalTarget} · ${t.status}</span></p>`).join(''):'<p class="muted">Not on a team yet.</p>')}
+  </div>
+  ${latest.length>1?sec('Recent badges',`<div class="row" style="gap:14px">${latest.map(a=>`<div style="text-align:center">${achSprite(a,44)}<p class="muted" style="font-size:.72rem">${esc(a.name)}</p></div>`).join('')}</div>`).replace('class="card psec"','class="card psec" style="margin-top:14px"'):''}
+  ${own?sec('Your referral code',`<div class="row" style="align-items:center"><b style="font-family:var(--font-d);font-size:1.4rem;color:var(--xp)">${esc(u.referralCode||'')}</b><button class="btn small" onclick="copyRef('${esc(u.referralCode||'')}')">Copy</button></div><p class="muted" style="font-size:.8rem;margin-top:4px">Friends who join with this code earn you +100 RP.</p>`).replace('class="card psec"','class="card psec" style="margin-top:14px"'):''}`;
+}
+function copyRef(c){ (navigator.clipboard?navigator.clipboard.writeText(c):Promise.reject()).then(()=>toast('Referral code copied'),()=>toast('Code: '+c)); }
+function editProfile(){
+  const u=me, favs=u.favorites||[];
+  openModal(`<h3 style="margin-bottom:12px">Edit profile</h3>
+  <div class="field"><label>Avatar</label><div class="avpick">${['av1','av2','av3'].map(a=>`<label><input type="radio" name="ep-av" value="${a}" ${avatarFor(u,me.id).endsWith(a+'.png')?'checked':''}><img src="${IMG}${a}.png" alt="Avatar ${a.slice(2)}"></label>`).join('')}</div></div>
+  <div class="field"><label>Nickname (shown on leaderboards)</label><input id="ep-nick" maxlength="20" value="${esc(u.nickname||'')}"></div>
+  <div class="field"><label>Phone</label><input id="ep-phone" value="${esc(u.phone||'')}"></div>
+  <div class="field"><label>Fitness goal</label><select id="ep-goal"><option value="">Not set</option>${GOALS.map(g=>`<option ${u.goal===g?'selected':''}>${g}</option>`).join('')}</select></div>
+  <div class="field"><label>Favorite workouts</label><div class="chips">${CATS.map(c=>`<label><input type="checkbox" class="ep-fav" value="${c}" ${favs.includes(c)?'checked':''}><span>${c}</span></label>`).join('')}</div></div>
+  <div class="field"><label class="chk"><input type="checkbox" id="ep-hide" ${u.hideOnBoard?'checked':''} style="width:auto"> Hide my name on member leaderboards</label></div>
+  <div class="row"><button class="btn primary" onclick="saveProfile()">Save changes</button><button class="btn" onclick="closeModal()">Cancel</button></div>`);
+}
+async function saveProfile(){
+  const av=document.querySelector('input[name=ep-av]:checked');
+  const patch={nickname:document.getElementById('ep-nick').value.trim(),phone:document.getElementById('ep-phone').value.trim(),goal:document.getElementById('ep-goal').value,
+    favorites:[...document.querySelectorAll('.ep-fav:checked')].map(x=>x.value),hideOnBoard:document.getElementById('ep-hide').checked};
+  if(av) patch.avatar=av.value;
+  await run(async()=>{
+    await api('PATCH','/api/profile',patch); await refreshMe();
+    document.getElementById('topAvatar').src=avatarFor(me,me.id);
+    closeModal(); toast('Profile saved'); renderProfile();
+  });
+}
+async function renderProfile(){
+  await refreshMe();
+  const [p,compSnap,redSnap]=await Promise.all([profileData(me.id,me),
+    db.collection('completions').where('userId','==',me.id).orderBy('submittedAt','desc').limit(10).get(),
+    db.collection('redemptions').where('userId','==',me.id).orderBy('requestedAt','desc').limit(10).get()]);
+  const expiry=me.membershipExpiry||(me.membershipStart+30*86400000), ms=membershipStatus(expiry);
+  document.getElementById('v-profile').innerHTML=`<h2 style="margin-bottom:12px">Member profile</h2>${profileHTML(p,true)}
+  <h3 style="margin:16px 0 8px">Membership</h3><div class="card">
+    <span class="pill ${ms.status==='Active'?'ok':ms.status==='Expiring Soon'?'pending':'rej'}">${ms.status}</span>
+    <p class="muted" style="margin-top:8px;font-size:.85rem">${ms.status==='Expired'?'Expired '+dateStr(expiry):ms.days+' day(s) remaining · expires '+dateStr(expiry)}</p>
+    <p class="muted" style="margin-top:10px;font-size:.8rem">Renew in person at the front desk. Staff extend your membership by 30 days and add a loyalty stamp.</p></div>
+  <h3 style="margin:16px 0 8px">Quest history</h3><div class="card">${compSnap.docs.length?compSnap.docs.map(d=>{const c=d.data();return `<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:2px dashed var(--border)"><span style="font-size:.85rem">${dateStr(c.submittedAt)}</span><span class="pill ${c.status==='approved'?'ok':c.status==='rejected'?'rej':'pending'}">${c.status}</span></div>`;}).join(''):'<p class="muted">No history yet.</p>'}</div>
+  <h3 style="margin:16px 0 8px">Redemption history</h3><div class="card">${redSnap.docs.length?redSnap.docs.map(d=>{const r=d.data();return `<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:2px dashed var(--border)"><span style="font-size:.85rem">${esc(r.rewardName)}</span><span class="row" style="gap:6px"><span class="pill ${r.status==='approved'?'ok':r.status==='pending'?'pending':'rej'}">${r.status}</span>${r.status==='pending'?`<button class="btn small" onclick="cancelRedemption('${d.id}')">Cancel</button>`:''}</span></div>`;}).join(''):'<p class="muted">No redemptions yet.</p>'}</div>`;
+}
+async function viewMember(id){
+  const d=await db.doc('users/'+id).get(); const p=await profileData(id,d.data());
+  openModal(`${profileHTML(p,false)}<button class="btn" style="width:100%;margin-top:14px" onclick="closeModal()">Close</button>`);
+}
+async function renderMembers(){
+  const snap=await db.collection('users').where('role','==','member').get();
+  document.getElementById('v-members').innerHTML=`<h2 style="margin-bottom:12px">Members</h2><div class="grid g3">${snap.docs.map(d=>{const u=d.data();return `<div class="card">
+    <div class="mhead"><img class="av" src="${avatarFor(u,d.id)}" alt=""><div><p style="font-weight:800">${esc(u.name)}</p><p class="muted" style="font-size:.8rem">${esc(u.email)}</p></div></div>
+    <div class="row" style="margin-top:8px;align-items:center"><span class="pill xp">Lvl ${u.level}</span><span class="pill rp">${u.rp} RP</span>${rankChip(u)}</div>
+    <p class="muted" style="font-size:.75rem;margin-top:6px">Streak: ${u.streak} · XP: ${u.xp} · Stamps: ${(u.loyaltyStamps||0)%12}/12</p>
+    <div class="row" style="margin-top:8px"><button class="btn small" onclick="viewMember('${d.id}')">View profile</button><button class="btn small" data-id="${d.id}" data-name="${esc(u.name)}" onclick="adjustForm(this.dataset.id,this.dataset.name)">Adjust XP/RP</button><button class="btn small" data-id="${d.id}" data-name="${esc(u.name)}" onclick="renewMember(this.dataset.id,this.dataset.name)">Renew +30d</button></div></div>`;}).join('')||'<p class="muted">No members yet.</p>'}</div>`;
+}
+
+// ---- LEADERBOARDS (shared by members and staff) ----
+
+
+
+function boardControls(fn,range,metric){
+  return `<div class="row" style="margin-bottom:12px"><select style="width:auto" onchange="${fn}(this.value,'${metric}')"><option value="today" ${range==='today'?'selected':''}>Today</option><option value="week" ${range==='week'?'selected':''}>This week</option><option value="month" ${range==='month'?'selected':''}>This month</option></select>
+  <select style="width:auto" onchange="${fn}('${range}',this.value)"><option value="xp" ${metric==='xp'?'selected':''}>XP earned</option><option value="quests" ${metric==='quests'?'selected':''}>Quests completed</option></select></div>`;
+}
+function podiumHTML(rows,metric){
+  const meds=[IMG+'trophy.png',IMG+'medal2.png',IMG+'medal3.png'];
+  const cell=i=>{const r=rows[i]; return r?`<div class="pod p${i+1}"><img class="medal" src="${meds[i]}" alt="Place ${i+1}"><img class="av" src="${avatarFor(r.u,r.userId)}" alt=""><span class="nm">${esc(lbName(r.u,r.userId))}</span><b>${r.val}${metric==='xp'?' XP':' quests'}</b></div>`:`<div class="pod p${i+1}"><img class="medal" src="${meds[i]}" alt="Place ${i+1}"><span class="muted">Open</span></div>`;};
+  return `<div class="podium">${cell(1)}${cell(0)}${cell(2)}</div>`;
+}
+function boardList(rows,metric,highlightId,staff){
+  return rows.length?rows.map((r,i)=>`<div class="lbrow${r.userId===highlightId?' me':''}"><span class="pos">#${i+1}</span><span class="who"><img class="av" src="${avatarFor(r.u,r.userId)}" alt=""><span><b>${esc(lbName(r.u,r.userId))}</b><br><span class="muted" style="font-size:.75rem">Lvl ${r.u.level}${staff?' · '+r.u.rp+' RP':''}</span></span></span>${rankChip(r.u)}<b class="val">${r.val}${metric==='xp'?' XP':''}</b></div>`).join(''):'<p class="muted">No activity in this period yet.</p>';
+}
+async function renderLeaderboard(range='week',metric='xp'){
+  let res; try{ res=await api('GET','/api/leaderboard?range='+encodeURIComponent(range)+'&metric='+encodeURIComponent(metric)); }catch(e){ toast(e.message); return; }
+  const rows=res.rows;
+  document.getElementById('v-leaderboard').innerHTML=`<h2 style="margin-bottom:10px">Leaderboard</h2>${boardControls('renderLeaderboard',range,metric)}${podiumHTML(rows,metric)}<div class="card">${boardList(rows,metric,me.id,false)}</div>`;
+}
+async function renderStaffLeaderboard(range='month',metric='xp'){
+  let res; try{ res=await api('GET','/api/leaderboard?range='+encodeURIComponent(range)+'&metric='+encodeURIComponent(metric)); }catch(e){ toast(e.message); return; }
+  const rows=res.rows;
+  document.getElementById('v-sleader').innerHTML=`<h2 style="margin-bottom:10px">Member leaderboard</h2>${boardControls('renderStaffLeaderboard',range,metric)}${podiumHTML(rows,metric)}
+  <div class="card" style="margin-bottom:14px"><h3>Top 3 rewards</h3><p class="muted" style="margin:4px 0 10px">1st place gets 100 RP, 2nd gets 75 RP, 3rd gets 50 RP. Awarding adds the points to each member's balance, notifies them, and is logged. Each period can be awarded once.</p>
+  ${res.awarded?`<span class="pill ok">Awarded ${dateStr(res.awarded.createdAt)}</span>`:`<button class="btn primary" ${rows.length?'':'disabled'} onclick="awardTop3('${range}','${metric}')">Award top ${Math.min(3,rows.length)||3}</button>`}</div>
+  <div class="card">${boardList(rows,metric,null,true)}</div>`;
+}
+async function awardTop3(range,metric){
+  await run(async()=>{
+    const r=await api('POST','/api/leaderboard/award',{range,metric});
+    toast('Top '+r.count+' rewarded'); renderStaffLeaderboard(range,metric);
+  }, ()=>renderStaffLeaderboard(range,metric));
+}
+
+async function api(method,path,body){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(token) opts.headers.Authorization='Bearer '+token;
+  if(body!==undefined) opts.body=JSON.stringify(body);
+  let r;
+  try{ r=await fetch(path,opts); }catch(e){ throw new Error('Cannot reach the server — check your connection.'); }
+  let j={}; try{ j=await r.json(); }catch(e){}
+  if(r.status===401 && token) sessionExpired();
+  if(!r.ok) throw new Error(j.error||('Request failed ('+r.status+')'));
+  return j;
+}
+function sessionExpired(){ if(me){ toast('Session expired — please log in again'); logout(); } }
+async function run(fn,onError){
+  try{ return await fn(); }
+  catch(e){ toast((e&&e.message)||'Something went wrong'); if(onError){ try{ await onError(); }catch(_){} } }
+}
+function applySession(r){ me=r.user; if(r.tz) APP_TZ=r.tz; }
+function saveToken(t){ token=t; try{ localStorage.setItem('fq_token',t); }catch(e){} }
+async function deleteSeasonal(id){
+  await run(async()=>{ await db.doc('seasonal/'+id).delete(); toast('Challenge deleted'); renderSeasonalStaff(); });
+}
+async function renewMember(userId,name){
+  await run(async()=>{
+    await api('POST','/api/members/'+userId+'/renew');
+    toast('Renewed '+name+': +30 days, +1 stamp'); renderMembers();
+  });
+}
+
+// Safety net: any action that throws shows a toast instead of failing silently.
+window.addEventListener('unhandledrejection',e=>{ toast((e.reason&&e.reason.message)||'Something went wrong'); e.preventDefault(); });
+init();
+</script>
+</body>
+</html>
