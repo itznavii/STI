@@ -1,4 +1,6 @@
+# The app lives in fitquest/; publish and functions paths are relative to it.
 [build]
+  base = "fitquest"
   publish = "public"
   functions = "netlify/functions"
 
