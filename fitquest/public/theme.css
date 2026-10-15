@@ -1,3 +1,5 @@
+/* Pixelify Sans draws 5 and 6 almost exactly like S, so numbers use Jersey 10 (digits only) while letters stay Pixelify. */
+@font-face{font-family:'FQ Digits';src:url('/fonts/jersey10-digits.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap;unicode-range:U+0030-0039;size-adjust:121%}
 /* FitQuest 8-bit theme: palette sampled from the Drive mockups */
 :root{
 --bg:#2FA8FF;--surface:#FAF8F2;--surface2:#FFE8C9;--border:#2B1B3D;--text:#2B1B3D;--muted:#5A4668;
@@ -5,7 +7,7 @@
 --xp:#E000B0;--xp-dim:#FFD6F3;--xp-ink:#8A005E;
 --rp:#009E84;--rp-dim:#C9FBEF;--rp-ink:#00604F;
 --danger:#D61F2C;--danger-dim:#FFDADD;--ok:#17A354;--ok-dim:#D6F7E1;--pending:#C98510;--pending-dim:#FFEFC2;
---font-d:'Pixelify Sans',ui-monospace,monospace;--font-b:'Nunito',system-ui,sans-serif;
+--font-d:'FQ Digits','Pixelify Sans',ui-monospace,monospace;--font-b:'Nunito',system-ui,sans-serif;
 --radius:8px;--shadow:0 4px 0 var(--ink);--brand:var(--plum);}
 body.staff{--brand:var(--teal);}
 body{background:linear-gradient(#2FA8FF 0,#5FF4FF 60%,#D4FCFF 100%) fixed;font-weight:600;}

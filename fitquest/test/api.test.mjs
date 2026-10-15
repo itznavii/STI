@@ -48,9 +48,13 @@ const A = r.json.token, aId = r.json.user.id, aCode = r.json.user.referralCode;
 ok(/^FQ[A-Z2-9]{6}$/.test(aCode), 'referral code format', aCode);
 r = await call('POST', '/api/auth/register', { body: { name: 'Ana2', email: 'ANA@x.com', password: 'secret1' } });
 ok(r.status === 409, 'duplicate email (any case) rejected', r);
-r = await call('POST', '/api/auth/register', { body: { name: 'Ben', email: 'ben@x.com', password: 'secret1', refCode: aCode.toLowerCase() } });
+r = await call('POST', '/api/auth/register', { body: { name: 'Nope', email: 'nope@x.com', password: 'secret1', refCode: 'FQ000000' } });
+ok(r.status === 400 && /Referral code not found/.test(r.json.error), 'unknown referral code is an error, not silently ignored', r);
+r = await call('POST', '/api/auth/login', { body: { email: 'nope@x.com', password: 'secret1' } });
+ok(r.status === 401, 'and no account was created by the failed registration');
+r = await call('POST', '/api/auth/register', { body: { name: 'Ben Cruz', email: 'ben@x.com', password: 'secret1', refCode: aCode.toLowerCase() } });
 const B = r.json.token, bId = r.json.user.id;
-ok(r.status === 200, 'register ben with referral', r);
+ok(r.status === 200 && r.json.referralApplied === true, 'register ben with referral (lowercase code works)', r);
 r = await call('POST', '/api/auth/register', { body: { name: 'X', email: 'staff@fitquest.demo', password: 'secret1' } });
 ok(r.status === 409, 'cannot register the staff email', r);
 
@@ -142,14 +146,45 @@ r = await call('POST', '/api/completions/' + comps[0].id + '/decision', { token:
 ok(r.status === 409, 'cannot approve twice', r);
 r = await call('GET', '/api/auth/me', { token: A });
 ok(r.json.user.xp === 20 && r.json.user.rp === 15, 'quest awarded 10/10', r.json.user);
-// ben's first approved completion pays his referrer
+// ---------- referrals: staff approve, nothing is paid automatically ----------
+r = await call('GET', '/api/collection/referrals', { token: A });
+ok(r.json.docs.length === 1 && r.json.docs[0].data.status === 'pending' && r.json.docs[0].data.referredName === 'Ben', 'referrer sees the friend by first name, pending', r.json.docs);
+ok(!JSON.stringify(r.json).includes('Cruz') && !JSON.stringify(r.json).includes('ben@x.com'), "referrer sees only the friend's first name");
+r = await call('GET', '/api/collection/notifications', { token: A });
+ok(r.json.docs.some((d) => /Ben signed up with your referral code/.test(d.data.msg)), 'referrer is told the code was used');
+// ben's quest being approved must NOT pay the referral any more
 r = await call('POST', '/api/quests/' + qIds[1] + '/submit', { token: B });
 comps = (await call('GET', '/api/collection/completions?query=' + encodeURIComponent(JSON.stringify({ wheres: [['status', '==', 'pending']] })), { token: S })).json.docs;
 await call('POST', '/api/completions/' + comps[0].id + '/decision', { token: S, body: { decision: 'approved' } });
 r = await call('GET', '/api/auth/me', { token: A });
-ok(r.json.user.rp === 115, 'referrer got +100 RP', r.json.user.rp);
-r = await call('GET', '/api/collection/referrals', { token: A });
-ok(r.json.docs.length === 1 && r.json.docs[0].data.rewarded === true, 'referral marked rewarded');
+ok(r.json.user.rp === 15, 'quest approval alone does not pay the referral', r.json.user.rp);
+const refDoc = (await call('GET', '/api/collection/referrals?query=' + encodeURIComponent(JSON.stringify({ wheres: [['status', '==', 'pending']] })), { token: S })).json.docs;
+ok(refDoc.length === 1, 'staff see the pending referral');
+r = await call('POST', '/api/referrals/' + refDoc[0].id + '/decision', { token: A, body: { decision: 'approved' } });
+ok(r.status === 403, 'referrer cannot approve their own referral');
+r = await call('POST', '/api/referrals/' + refDoc[0].id + '/decision', { token: B, body: { decision: 'approved' } });
+ok(r.status === 403, 'the friend cannot approve it either');
+r = await call('POST', '/api/referrals/' + refDoc[0].id + '/decision', { token: S, body: { decision: 'whatever' } });
+ok(r.status === 400, 'bad decision rejected');
+r = await call('POST', '/api/referrals/' + refDoc[0].id + '/decision', { token: S, body: { decision: 'approved' } });
+ok(r.status === 200, 'staff approve referral', r);
+r = await call('GET', '/api/auth/me', { token: A });
+ok(r.json.user.rp === 115, 'referrer gets +100 RP on approval', r.json.user.rp);
+r = await call('POST', '/api/referrals/' + refDoc[0].id + '/decision', { token: S, body: { decision: 'approved' } });
+ok(r.status === 409, 'cannot be paid twice', r);
+r = await call('GET', '/api/collection/notifications', { token: A });
+ok(r.json.docs.some((d) => /Referral approved: \+100 RP/.test(d.data.msg)), 'referrer is notified of the approval');
+r = await call('GET', '/api/collection/member_achievements', { token: A });
+ok(r.json.docs.some((d) => d.data.achId === 'refer1'), 'Refer a Friend achievement unlocked');
+// rejection path pays nothing
+r = await call('POST', '/api/auth/register', { body: { name: 'Cara Lim', email: 'cara@x.com', password: 'secret1', refCode: aCode } });
+const cId = r.json.user.id;
+const pend = (await call('GET', '/api/collection/referrals?query=' + encodeURIComponent(JSON.stringify({ wheres: [['status', '==', 'pending']] })), { token: S })).json.docs;
+ok(pend.length === 1 && pend[0].data.referredId === cId, 'second referral queued');
+r = await call('POST', '/api/referrals/' + pend[0].id + '/decision', { token: S, body: { decision: 'rejected' } });
+ok(r.status === 200 && (await call('GET', '/api/auth/me', { token: A })).json.user.rp === 115, 'rejected referral pays nothing');
+r = await call('POST', '/api/auth/register', { body: { name: 'Self', email: 'self@x.com', password: 'secret1', refCode: '' } });
+ok(r.status === 200 && (await call('GET', '/api/collection/referrals', { token: r.json.token })).json.docs.length === 0, 'no code = no referral record');
 // daily cap: ana already has 1 quest award today; approve 3 more -> 3rd+ is capped (cap = 3/day)
 for (const q of qIds) await call('POST', '/api/quests/' + q + '/submit', { token: A });
 comps = (await call('GET', '/api/collection/completions?query=' + encodeURIComponent(JSON.stringify({ wheres: [['status', '==', 'pending']], orderByField: 'submittedAt' })), { token: S })).json.docs;
@@ -297,7 +332,7 @@ const hidden = r.json.rows.find((x) => x.userId === bId);
 ok(hidden && hidden.u.name === 'Hidden hero' && !JSON.stringify(r.json).includes('Ben') && !JSON.stringify(r.json).includes('ben@x.com') && !JSON.stringify(r.json).includes('Shadow'), "hidden member's real name never reaches other members", hidden);
 ok(!JSON.stringify(r.json).includes('passwordHash') && !('rp' in r.json.rows[0].u), 'leaderboard leaks no hash / RP to members');
 r = await call('GET', '/api/leaderboard?range=week&metric=xp', { token: S });
-ok(r.json.rows.find((x) => x.userId === bId).u.name === 'Ben' && r.json.awarded, 'staff sees real names + awarded state');
+ok(r.json.rows.find((x) => x.userId === bId).u.name === 'Ben Cruz' && r.json.awarded, 'staff sees real names + awarded state');
 r = await call('GET', '/api/leaderboard?range=month&metric=quests', { token: A });
 ok(r.status === 200 && r.json.rows.length >= 1, 'quest leaderboard');
 

@@ -86,9 +86,9 @@ const route = (method, pattern, handler, pub = false) => routes.push({ method, p
 // -- accounts --
 route('POST', '/api/auth/register', async ({ req, body }) => {
   limit('reg|' + clientIp(req), 20, 3600000);
-  const { id, data } = await tx((c) => L.register(c, body));
+  const { id, data, referralApplied } = await tx((c) => L.register(c, body));
   const token = await signToken(getPool(), id);
-  return { token, user: publicUser(id, data), tz: tzName(), today: dateIso(Date.now()) };
+  return { token, user: publicUser(id, data), tz: tzName(), today: dateIso(Date.now()), referralApplied };
 }, true);
 route('POST', '/api/auth/login', async ({ req, body }) => {
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
@@ -122,6 +122,7 @@ route('GET', '/api/leaderboard', ({ user, url }) =>
 // -- staff actions --
 route('POST', '/api/completions/:id/decision', ({ user, params, body }) => tx((c) => L.decideCompletion(c, user, needId(params.id), body.decision)));
 route('POST', '/api/seasonal-completions/:id/decision', ({ user, params, body }) => tx((c) => L.decideSeasonal(c, user, needId(params.id), body.decision)));
+route('POST', '/api/referrals/:id/decision', ({ user, params, body }) => tx((c) => L.decideReferral(c, user, needId(params.id), body.decision)));
 route('POST', '/api/redemptions/:id/decision', ({ user, params, body }) => tx((c) => L.decideRedemption(c, user, needId(params.id), body.decision)));
 route('POST', '/api/members/:id/adjust', ({ user, params, body }) => tx((c) => L.adjustMember(c, user, needId(params.id), body)));
 route('POST', '/api/members/:id/renew', ({ user, params }) => tx((c) => L.renewMember(c, user, needId(params.id))));

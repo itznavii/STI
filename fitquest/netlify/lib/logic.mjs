@@ -14,6 +14,7 @@ export const GOALS = ['Build strength', 'Lose weight', 'Improve cardio', 'Get mo
 export const CATS = ['Cardio', 'Strength', 'Upper Body', 'Lower Body', 'Glutes', 'Flexibility'];
 const AVATARS = ['av1', 'av2', 'av3'];
 const DAILY_QUEST_CAP = 3;
+const REFERRAL_RP = 100;
 
 export const ACH = [
   { id: 'first_workout', name: 'First Workout', check: (s) => s.completions >= 1 },
@@ -169,6 +170,12 @@ export async function register(c, b) {
   if (pass.length < 6 || pass.length > 200) throw bad('Password must be at least 6 characters');
   const taken = await c.query(`SELECT 1 FROM docs WHERE coll='users' AND lower(data->>'email') = $1`, [email]);
   if (taken.rowCount) throw conflict('Email already registered');
+  // An unknown code is an error, not something to ignore silently (that made referrals look broken).
+  let referrer = null;
+  if (refCode) {
+    [referrer] = await find(c, 'users', { wheres: [['referralCode', '==', refCode]], limit: 1 });
+    if (!referrer) throw bad('Referral code not found. Check it, or leave that box empty.');
+  }
   const id = newId(), now = Date.now();
   const data = {
     name, email, phone, passwordHash: await hashPassword(pass), role: 'member', xp: 0, rp: 0, level: 1,
@@ -176,11 +183,15 @@ export async function register(c, b) {
     membershipExpiry: now + 30 * 86400000, referralCode: await newReferralCode(c), loyaltyStamps: 0,
   };
   await putDoc(c, 'users', id, data);
-  if (refCode) {
-    const [ref] = await find(c, 'users', { wheres: [['referralCode', '==', refCode]], limit: 1 });
-    if (ref && ref.id !== id) await putDoc(c, 'referrals', newId(), { referrerId: ref.id, referredId: id, status: 'pending', rewarded: false, createdAt: now });
+  // Staff approve referrals; the reward is paid on approval (see decideReferral).
+  if (referrer) {
+    await putDoc(c, 'referrals', newId(), {
+      referrerId: referrer.id, referredId: id, referredName: name.split(/\s+/)[0].slice(0, 20),
+      status: 'pending', rewarded: false, createdAt: now,
+    });
+    await notify(c, referrer.id, name.split(/\s+/)[0] + ' signed up with your referral code. Waiting for staff approval.');
   }
-  return { id, data };
+  return { id, data, referralApplied: !!referrer };
 }
 
 // Not run inside tx(): read-only except for the optional hash upgrade.
@@ -321,16 +332,6 @@ export async function decideCompletion(c, staff, compId, decision) {
     : `Quest approved! +${xpAward} XP, +${rpAward} RP.`);
   await evaluateAchievements(c, comp.userId);
 
-  // referral: reward the referrer on the referred member's first approved quest
-  if ((await countDocs(c, 'completions', [['userId', '==', comp.userId], ['status', '==', 'approved']])) === 1) {
-    const [ref] = await find(c, 'referrals', { wheres: [['referredId', '==', comp.userId], ['rewarded', '==', false]], limit: 1 });
-    if (ref) {
-      await addRP(c, ref.data.referrerId, 100, 'referral', ref.id);
-      await patchDoc(c, 'referrals', ref.id, { status: 'completed', rewarded: true });
-      await notify(c, ref.data.referrerId, 'Referral reward: +100 RP for a successful referral!');
-      await evaluateAchievements(c, ref.data.referrerId);
-    }
-  }
   // team-up progress
   const teams = await find(c, 'team_ups', { wheres: [['memberIds', 'array-contains', comp.userId], ['status', '==', 'active']] });
   for (const { id, data: t } of teams) {
@@ -365,6 +366,25 @@ export async function decideSeasonal(c, staff, id, decision) {
   await patchDoc(c, 'seasonal_completions', id, { status: 'approved', reviewedAt: Date.now() });
   await notify(c, comp.userId, 'Seasonal challenge approved! +' + s.xpReward + ' XP, +' + s.rpReward + ' RP.');
   await evaluateAchievements(c, comp.userId);
+  return { ok: true };
+}
+
+export async function decideReferral(c, staff, id, decision) {
+  requireRole(staff, 'staff');
+  if (!['approved', 'rejected'].includes(decision)) throw bad('Bad decision');
+  const r = await getDoc(c, 'referrals', id);
+  if (!r) throw notFound('Referral not found');
+  if (r.status !== 'pending' || r.rewarded) throw conflict('Already reviewed');
+  const friend = r.referredName || 'your friend';
+  if (decision === 'rejected') {
+    await patchDoc(c, 'referrals', id, { status: 'rejected', reviewedAt: Date.now() });
+    await notify(c, r.referrerId, 'Referral for ' + friend + ' was not approved.');
+    return { ok: true };
+  }
+  await addRP(c, r.referrerId, REFERRAL_RP, 'referral', id);
+  await patchDoc(c, 'referrals', id, { status: 'approved', rewarded: true, reviewedAt: Date.now() });
+  await notify(c, r.referrerId, 'Referral approved: +' + REFERRAL_RP + ' RP for ' + friend + ' joining!');
+  await evaluateAchievements(c, r.referrerId);
   return { ok: true };
 }
 

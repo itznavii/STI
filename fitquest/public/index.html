@@ -319,7 +319,7 @@ async function register(){
   if(!name||!email||!password){toast('Fill all required fields');return;}
   await run(async()=>{
     const r=await api('POST','/api/auth/register',{name,email,password,phone,refCode});
-    saveToken(r.token); applySession(r); enterApp(); toast('Welcome to FitQuest!');
+    saveToken(r.token); applySession(r); enterApp(); toast(r.referralApplied?'Welcome! Your referral code was accepted and is waiting for staff approval.':'Welcome to FitQuest!');
   });
 }
 async function login(){
@@ -505,17 +505,19 @@ async function cancelRedemption(redId){
 // ---- MEMBER: PROFILE ----
 // ---- STAFF: DASHBOARD ----
 async function renderStaffDash(){
-  const [members,quests,pendingV,pendingR] = await Promise.all([
+  const [members,quests,pendingV,pendingR,pendingRef] = await Promise.all([
     db.collection('users').where('role','==','member').get(),
     db.collection('quests').where('active','==',true).get(),
     db.collection('completions').where('status','==','pending').get(),
     db.collection('redemptions').where('status','==','pending').get(),
+    db.collection('referrals').where('status','==','pending').get(),
   ]);
   document.getElementById('v-dash').innerHTML = `<img class="banner" src="/img/banner.png" alt="FitQuest: level up your health"><h2 style="margin-bottom:12px">Staff Dashboard</h2><div class="grid g3">
   <div class="card statbox"><p class="muted">Members</p><div class="n">${members.size}</div></div>
   <div class="card statbox"><p class="muted">Active quests</p><div class="n">${quests.size}</div></div>
   <div class="card statbox"><p class="muted">Pending verifications</p><div class="n" style="color:var(--xp)">${pendingV.size}</div></div>
   <div class="card statbox"><p class="muted">Pending redemptions</p><div class="n" style="color:var(--rp)">${pendingR.size}</div></div>
+  <div class="card statbox"><p class="muted">Pending referrals</p><div class="n" style="color:var(--xp)">${pendingRef.size}</div></div>
   </div>`;
 }
 
@@ -546,6 +548,7 @@ async function deleteQuest(id){ await db.doc('quests/'+id).delete(); renderStaff
 async function renderVerify(){
   const snap = await db.collection('completions').where('status','==','pending').orderBy('submittedAt','asc').get();
   const ssnap = await db.collection('seasonal_completions').where('status','==','pending').orderBy('submittedAt','asc').get();
+  const rsnap = await db.collection('referrals').where('status','==','pending').orderBy('createdAt','asc').get();
   const el = document.getElementById('v-verify');
   const rows = await Promise.all(snap.docs.map(async d=>{
     const c=d.data(); const [u,q] = await Promise.all([db.doc('users/'+c.userId).get(), db.doc('quests/'+c.questId).get()]);
@@ -555,12 +558,18 @@ async function renderVerify(){
     const c=d.data(); const [u,s] = await Promise.all([db.doc('users/'+c.userId).get(), db.doc('seasonal/'+c.seasonalId).get()]);
     return {id:d.id,c,user:u.data(),title:s.data()?.name};
   }));
-  if(!rows.length && !srows.length){ el.innerHTML='<h2 style="margin-bottom:12px">Verifications</h2><p class="muted">No pending submissions.</p>'; return; }
+  const rrows = await Promise.all(rsnap.docs.map(async d=>{
+    const r=d.data(); const [a,b] = await Promise.all([db.doc('users/'+r.referrerId).get(), db.doc('users/'+r.referredId).get()]);
+    return {id:d.id,r,referrer:a.data(),friend:b.data()};
+  }));
+  if(!rows.length && !srows.length && !rrows.length){ el.innerHTML='<h2 style="margin-bottom:12px">Verifications</h2><p class="muted">No pending submissions.</p>'; return; }
   el.innerHTML = `<h2 style="margin-bottom:12px">Verifications</h2><div class="grid g3">
   ${rows.map(r=>`<div class="card"><p style="font-weight:700">${esc(r.title||'Quest')}</p><p class="muted" style="font-size:.8rem">${esc(r.user?.name||'Member')}</p><p class="muted" style="font-size:.75rem">${new Date(r.c.submittedAt).toLocaleString()}</p>
   <div class="row" style="margin-top:10px"><button class="btn primary small" onclick="verifyDecision('${r.id}','approved')">Approve</button><button class="btn danger small" onclick="verifyDecision('${r.id}','rejected')">Reject</button></div></div>`).join('')}
   ${srows.map(r=>`<div class="card"><p style="font-weight:700;display:flex;align-items:center;gap:8px"><span style="color:var(--xp);display:inline-flex">${svgIcon('medal',18)}</span>${esc(r.title||'Seasonal')}</p><p class="muted" style="font-size:.8rem">${esc(r.user?.name||'Member')}</p><p class="muted" style="font-size:.75rem">${new Date(r.c.submittedAt).toLocaleString()}</p>
   <div class="row" style="margin-top:10px"><button class="btn primary small" onclick="verifySeasonalDecision('${r.id}','approved')">Approve</button><button class="btn danger small" onclick="verifySeasonalDecision('${r.id}','rejected')">Reject</button></div></div>`).join('')}
+  ${rrows.map(r=>`<div class="card"><p style="font-weight:700;display:flex;align-items:center;gap:8px"><span style="color:var(--xp);display:inline-flex">${svgIcon('gift',18)}</span>Referral</p><p style="font-size:.85rem;margin-top:4px"><b>${esc(r.friend?.name||r.r.referredName||'New member')}</b> signed up with the code of <b>${esc(r.referrer?.name||'a member')}</b></p><p class="muted" style="font-size:.75rem">${new Date(r.r.createdAt).toLocaleString()} · approving pays the referrer +100 RP</p>
+  <div class="row" style="margin-top:10px"><button class="btn primary small" onclick="referralDecision('${r.id}','approved')">Approve</button><button class="btn danger small" onclick="referralDecision('${r.id}','rejected')">Reject</button></div></div>`).join('')}
   </div>`;
 }
 async function verifyDecision(compId, decision){
@@ -659,9 +668,12 @@ async function submitSeasonal(seasonalId){
 // ---- REFERRAL ----
 async function renderReferral(){
   await refreshMe();
-  const snap = await db.collection('referrals').where('referrerId','==',me.id).get();
-  document.getElementById('v-referral').innerHTML = `<h2 style="margin-bottom:12px">Referrals</h2><div class="card" style="margin-bottom:14px"><p class="muted">Your referral code</p><h2 style="color:var(--xp)">${esc(me.referralCode||'')}</h2><p class="muted" style="font-size:.8rem;margin-top:6px">Share this code — earn +100 RP when a friend registers and completes their first quest.</p></div>
-  <h3 style="margin-bottom:8px">History (${snap.size})</h3><div class="card">${snap.docs.length?snap.docs.map(d=>{const r=d.data();return `<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:.85rem">${new Date(r.createdAt).toLocaleDateString()}</span><span class="pill ${r.rewarded?'ok':'pending'}">${r.rewarded?'Rewarded':'Pending'}</span></div>`;}).join(''):'<p class="muted">No referrals yet.</p>'}</div>`;
+  const snap = await db.collection('referrals').where('referrerId','==',me.id).orderBy('createdAt','desc').get();
+  const pill=r=>r.status==='approved'||r.rewarded?'<span class="pill ok">Approved +100 RP</span>':r.status==='rejected'?'<span class="pill rej">Not approved</span>':'<span class="pill pending">Waiting for staff</span>';
+  document.getElementById('v-referral').innerHTML = `<h2 style="margin-bottom:12px">Referrals</h2><div class="card" style="margin-bottom:14px"><p class="muted">Your referral code</p><h2 style="color:var(--xp)">${esc(me.referralCode||'')}</h2>
+  <p class="muted" style="font-size:.8rem;margin-top:6px">Give this code to a friend. They type it in the "Referral code" box when they register. Staff then confirm it and you earn +100 RP.</p>
+  <button class="btn small" style="margin-top:10px" data-code="${esc(me.referralCode||'')}" onclick="copyRef(this.dataset.code)">Copy code</button></div>
+  <h3 style="margin-bottom:8px">Friends you referred (${snap.size})</h3><div class="card">${snap.docs.length?snap.docs.map(d=>{const r=d.data();return `<div class="row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:.9rem"><b>${esc(r.referredName||'Friend')}</b> <span class="muted" style="font-size:.78rem">· ${new Date(r.createdAt).toLocaleDateString()}</span></span>${pill(r)}</div>`;}).join(''):'<p class="muted">No referrals yet. Share your code!</p>'}</div>`;
 }
 
 // ---- LOYALTY ----
@@ -693,6 +705,12 @@ async function saveSeasonal(){
     await api('POST','/api/seasonal',{name,description:document.getElementById('sf-desc').value.trim(),start,end});
     closeModal(); toast('Seasonal challenge created'); renderSeasonalStaff();
   });
+}
+async function referralDecision(id,decision){
+  await run(async()=>{
+    await api('POST','/api/referrals/'+id+'/decision',{decision});
+    toast(decision==='approved'?'Referral approved: +100 RP paid':'Referral rejected'); renderVerify();
+  }, ()=>renderVerify());
 }
 async function verifySeasonalDecision(id,decision){
   await run(async()=>{
@@ -740,7 +758,8 @@ function rankInfo(u){
   const next=RANKS[i+1]||null;
   return {rank:RANKS[i],index:i,months,next,left:next?next.months-months:0,pct:next?Math.round((months-RANKS[i].months)/(next.months-RANKS[i].months)*100):100};
 }
-function rankBadge(r,size){ size=size||30; return `<img class="rb r-${r.id}" src="${IMG}${r.id==='hero'?'trophy':'rank_1'}.png" width="${size}" height="${size}" alt="">`; }
+const RANK_ICON={beginner:'rank_0',rookie:'medal2',active:'rank_1',hero:'trophy'}; // a different picture for each rank
+function rankBadge(r,size){ size=size||30; return `<img class="rb r-${r.id}" src="${IMG}${RANK_ICON[r.id]||'rank_0'}.png" width="${size}" height="${size}" alt="${r.name}">`; }
 function rankChip(u){ const r=rankInfo(u).rank; return `<span class="rankchip">${rankBadge(r,24)}<span>${r.name}</span></span>`; }
 function achSprite(a,size){
   const m={medal:'ribbon',check:'heart',flame:'rank_0',dumbbell:'rank_1',star:'coin',trophy:'trophy',users:'gift1',gift:'gift2',crown:'trophy'};

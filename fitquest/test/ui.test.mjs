@@ -137,6 +137,37 @@ ok(/RP reserved/.test(toastText(m)) && errors.length === 0, 'redeem works for ap
 await visitAllTabs(m, 'member (with data)');
 await visitAllTabs(s, 'staff (with data)');
 
+// ---- referrals end to end ----
+const code = m.eval('me.referralCode');
+const f = newBrowser(); await sleep(150);
+type(f, 'rg-name', 'Fay Santos'); type(f, 'rg-email', 'fay@x.com'); type(f, 'rg-pass', 'secret1'); type(f, 'rg-ref', 'FQ999999'); f.register(); await sleep(600);
+ok(/Referral code not found/.test(toastText(f)) && $(f, 'appView').style.display === 'none', 'wrong code shows a clear error and does not register', toastText(f));
+type(f, 'rg-ref', code.toLowerCase()); f.register();
+ok(await until(() => $(f, 'appView').style.display !== 'none'), 'registers with a valid code');
+ok(/waiting for staff approval/.test(toastText(f)), 'new member is told the code was accepted', toastText(f));
+await sleep(300);
+m.switchTab('referral'); await sleep(500);
+ok(/Fay/.test($(m, 'v-referral').textContent) && /Waiting for staff/.test($(m, 'v-referral').textContent) && !/Santos/.test($(m, 'v-referral').textContent), 'referrer sees "Fay" as Waiting for staff (first name only)', $(m, 'v-referral').textContent.slice(0, 300));
+s.switchTab('verify'); await sleep(600);
+const refCard = [...s.document.querySelectorAll('#v-verify .card')].find((c) => /Referral/.test(c.textContent) && /Fay Santos/.test(c.textContent));
+ok(!!refCard && /Zed O'Brien/.test(refCard.textContent), 'staff see "Fay Santos signed up with the code of Zed O\'Brien"');
+s.switchTab('dash'); await sleep(500);
+ok(/Pending referrals\s*1/.test($(s, 'v-dash').textContent.replace(/\s+/g, ' ')) || /Pending referrals/.test($(s, 'v-dash').textContent), 'dashboard has a pending-referrals tile');
+s.switchTab('verify'); await sleep(500);
+const rpBeforeRef = JSON.parse(await (await m.fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + m.localStorage.getItem('fq_token') } })).text()).user.rp;
+[...s.document.querySelectorAll('#v-verify .card')].find((c) => /Referral/.test(c.textContent)).querySelector('button.primary').click(); await sleep(700);
+ok(/Referral approved/.test(toastText(s)), 'staff approve from the UI', toastText(s));
+await m.refreshMe();
+const rpAfterRef = JSON.parse(await (await m.fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + m.localStorage.getItem('fq_token') } })).text()).user.rp;
+ok(rpAfterRef === rpBeforeRef + 100, 'referrer received +100 RP', { rpBeforeRef, rpAfterRef });
+m.switchTab('referral'); await sleep(500);
+ok(/Approved/.test($(m, 'v-referral').textContent), 'referrer sees Approved');
+
+// ---- rank icons are all different ----
+m.switchTab('rank'); await sleep(500);
+const srcs = [...m.document.querySelectorAll('#v-rank .ladder img')].map((i) => i.getAttribute('src'));
+ok(srcs.length === 4 && new Set(srcs).size === 4, 'four ranks show four different icons', srcs);
+
 // logout clears the session
 m.logout(); await sleep(100);
 ok(!m.localStorage.getItem('fq_token') && $(m, 'authView').style.display !== 'none', 'logout clears the token');

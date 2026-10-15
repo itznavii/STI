@@ -6,7 +6,7 @@ Staff on one phone and members on other devices all use the same live data.
 ## Deploy
 
 1. Put this folder in a GitHub repo and, in Netlify, choose **Add new site → Import an existing project**.
-   (Settings are read from `netlify.toml` at the repo root, which sets `fitquest/` as the base directory; no build command is needed.)
+   (Settings are read from `netlify.toml`; no build command is needed.)
 2. Before the first visit, add these environment variables (Site configuration → Environment variables):
 
    | Variable | What it does |
@@ -36,6 +36,8 @@ Changing `STAFF_PASSWORD` later and redeploying updates the staff password.
 * Passwords are salted scrypt hashes, checked on the server. Sessions are signed tokens (30 days).
 * Members can only read their own records; leaderboards hide members who opted out; staff-only data stays staff-only.
 * Membership renewal is now done by staff in person (Members → "Renew +30d"). It extends the membership and adds a loyalty stamp.
+* Referrals: a friend types the member's code when registering; the referral then waits in the staff **Verifications** tab. Approving it pays the referrer +100 RP (nothing is paid automatically). A wrong code shows an error at registration.
+* Numbers use the Jersey 10 pixel font (`public/fonts/`) because the main pixel font draws 5 and 6 like the letter S.
 * The app refreshes notifications every 20 s while the tab is visible (each refresh is one function call).
 
 ## Known limits
