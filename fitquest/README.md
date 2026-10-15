@@ -6,7 +6,7 @@ Staff on one phone and members on other devices all use the same live data.
 ## Deploy
 
 1. Put this folder in a GitHub repo and, in Netlify, choose **Add new site → Import an existing project**.
-   (Settings are read from `netlify.toml`; no build command is needed.)
+   (Settings are read from `netlify.toml` at the repo root, which sets `fitquest/` as the base directory; no build command is needed.)
 2. Before the first visit, add these environment variables (Site configuration → Environment variables):
 
    | Variable | What it does |
