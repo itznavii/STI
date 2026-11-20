@@ -135,9 +135,11 @@ await s.applyLevelRank(zedId); await sleep(200);
 ok(/Reason is required/.test(toastText(s)), 'dialog asks for a reason', toastText(s));
 type(s, 'lr-reason', 'UI test'); await s.applyLevelRank(zedId); await sleep(500);
 ok(/Level \/ rank updated/.test(toastText(s)), 'level / rank applied from the UI', toastText(s));
-await m.refreshMe();
+m.switchTab('home'); await sleep(400);
+await m.syncMe(); await sleep(600);
 const lrMe = m.eval('me');
 ok(lrMe.level === 7 && lrMe.rankOverride === 'active', 'member now has level 7 and the Active rank', { level: lrMe.level, r: lrMe.rankOverride });
+ok(/Active/.test($(m, 'v-home').textContent) && /Level\s*7/.test($(m, 'v-home').textContent.replace(/\s+/g, ' ')), 'member home screen updates by itself (no re-login) and shows Level 7 + Active rank', $(m, 'v-home').textContent.replace(/\s+/g, ' ').slice(0, 300));
 ok(m.rankInfo(lrMe).rank.id === 'active' && m.rankInfo(lrMe).set === true, 'rankInfo honours the staff-set rank');
 ok(m.rankInfo({ ...lrMe, rankOverride: null }).rank.id === 'beginner', 'rankInfo falls back to membership length when automatic');
 

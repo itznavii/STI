@@ -397,9 +397,22 @@ async function refreshMe(){
 
 async function watchNotifs(){
   const q = db.collection('notifications').where('userId','==',me.id).where('read','==',false);
-  const un = q.onSnapshot(snap=>{ document.getElementById('notifDot').style.display = snap.size>0?'block':'none'; });
+  const un = q.onSnapshot(snap=>{ document.getElementById('notifDot').style.display = snap.size>0?'block':'none'; if(me&&me.role==='member') syncMe(); });
   unsub.push(un);
 }
+// Keeps a member's open screen in step with changes made by staff (level, rank, XP, RP, membership).
+// Runs when a new notification arrives and when the tab becomes visible again.
+async function syncMe(){
+  if(!me||me.role!=='member') return;
+  const sig=()=>JSON.stringify([me.level,me.xp,me.rp,me.rankOverride,me.membershipExpiry,me.loyaltyStamps]);
+  const before=sig();
+  try{ await refreshMe(); }catch(e){ return; }
+  if(sig()===before) return;
+  const t=document.querySelector('.tab.active');
+  const modalOpen=document.getElementById('modalbg').classList.contains('show');
+  if(t&&!modalOpen) switchTab(t.dataset.t);
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) syncMe(); });
 async function openNotifs(){
   const snap = await db.collection('notifications').where('userId','==',me.id).orderBy('createdAt','desc').limit(20).get();
   const items = snap.docs.map(d=>d.data());
