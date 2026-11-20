@@ -143,6 +143,38 @@ ok(/Active/.test($(m, 'v-home').textContent) && /Level\s*7/.test($(m, 'v-home').
 ok(m.rankInfo(lrMe).rank.id === 'active' && m.rankInfo(lrMe).set === true, 'rankInfo honours the staff-set rank');
 ok(m.rankInfo({ ...lrMe, rankOverride: null }).rank.id === 'beginner', 'rankInfo falls back to membership length when automatic');
 
+// leaderboard reset from the staff UI
+s.switchTab('sleader'); await sleep(500);
+ok(/Reset leaderboard/.test($(s, 'v-sleader').textContent) && !/Undo reset/.test($(s, 'v-sleader').textContent), 'staff leaderboard shows a Reset button (and no Undo yet)');
+errors.length = 0;
+s.resetBoardForm('month', 'xp'); await sleep(100);
+ok(!!$(s, 'lbr-reason') && /Reset leaderboard\?/.test($(s, 'modal').textContent), 'reset confirmation dialog opens');
+await s.resetBoard('month', 'xp'); await sleep(200);
+ok(/Reason is required/.test(toastText(s)), 'reset asks for a reason', toastText(s));
+type(s, 'lbr-reason', 'UI test season'); await s.resetBoard('month', 'xp'); await sleep(600);
+ok(/Leaderboard reset/.test(toastText(s)) && /Undo reset/.test($(s, 'v-sleader').textContent) && /Last reset/.test($(s, 'v-sleader').textContent), 'staff reset the leaderboard from the UI', toastText(s));
+ok(/No activity in this period yet/.test($(s, 'v-sleader').textContent), 'staff board is empty after the reset');
+m.switchTab('leaderboard'); await sleep(500);
+ok(/Fresh start/.test($(m, 'v-leaderboard').textContent), 'members see a "fresh start" note on their leaderboard');
+s.undoBoardResetForm('month', 'xp'); await sleep(100);
+await s.undoBoardReset('month', 'xp'); await sleep(600);
+ok(/Reset undone/.test(toastText(s)) && !/Undo reset/.test($(s, 'v-sleader').textContent), 'staff undid the reset from the UI', toastText(s));
+ok(errors.length === 0, 'no script errors during leaderboard reset', errors.slice());
+
+// reset award from the staff UI
+s.switchTab('sleader'); await sleep(500);
+ok(!/Reset award/.test($(s, 'v-sleader').textContent), 'no Reset award button before anything is awarded');
+await s.awardTop3('month', 'xp'); await sleep(700);
+ok(/Awarded/.test($(s, 'v-sleader').textContent) && /Reset award/.test($(s, 'v-sleader').textContent), 'after awarding, staff see the Awarded mark and a Reset award button', toastText(s));
+errors.length = 0;
+s.resetAwardForm('month', 'xp'); await sleep(100);
+ok(!!$(s, 'ra-reason') && $(s, 'ra-take').checked === true, 'reset award dialog opens with "take back RP" ticked');
+await s.resetAward('month', 'xp'); await sleep(200);
+ok(/Reason is required/.test(toastText(s)), 'reset award asks for a reason', toastText(s));
+type(s, 'ra-reason', 'UI test'); await s.resetAward('month', 'xp'); await sleep(700);
+ok(/Award reset/.test(toastText(s)) && !/Reset award/.test($(s, 'v-sleader').textContent) && /Award top/.test($(s, 'v-sleader').textContent), 'staff reset the award from the UI and can award again', toastText(s));
+ok(errors.length === 0, 'no script errors during reset award', errors.slice());
+
 // reward redeem from the member UI with an apostrophe-named reward
 await s.eval(`db.doc('rewards/r_apos')`).set({ name: "Men's Shirt", cost: 100, totalQty: 3, availableQty: 3, redeemedQty: 0, active: true });
 m.switchTab('rewards'); await sleep(500);

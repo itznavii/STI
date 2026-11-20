@@ -956,15 +956,60 @@ function boardList(rows,metric,highlightId,staff){
 async function renderLeaderboard(range='week',metric='xp'){
   let res; try{ res=await api('GET','/api/leaderboard?range='+encodeURIComponent(range)+'&metric='+encodeURIComponent(metric)); }catch(e){ toast(e.message); return; }
   const rows=res.rows;
-  document.getElementById('v-leaderboard').innerHTML=`<h2 style="margin-bottom:10px">Leaderboard</h2>${boardControls('renderLeaderboard',range,metric)}${podiumHTML(rows,metric)}<div class="card">${boardList(rows,metric,me.id,false)}</div>`;
+  document.getElementById('v-leaderboard').innerHTML=`<h2 style="margin-bottom:10px">Leaderboard</h2>${res.resetAt?`<p class="muted" style="margin-bottom:10px;font-size:.82rem">Fresh start: the leaderboard was reset on ${new Date(res.resetAt).toLocaleString()}. Only activity since then counts here. Your XP and level are unchanged.</p>`:''}${boardControls('renderLeaderboard',range,metric)}${podiumHTML(rows,metric)}<div class="card">${boardList(rows,metric,me.id,false)}</div>`;
 }
 async function renderStaffLeaderboard(range='month',metric='xp'){
   let res; try{ res=await api('GET','/api/leaderboard?range='+encodeURIComponent(range)+'&metric='+encodeURIComponent(metric)); }catch(e){ toast(e.message); return; }
   const rows=res.rows;
   document.getElementById('v-sleader').innerHTML=`<h2 style="margin-bottom:10px">Member leaderboard</h2>${boardControls('renderStaffLeaderboard',range,metric)}${podiumHTML(rows,metric)}
   <div class="card" style="margin-bottom:14px"><h3>Top 3 rewards</h3><p class="muted" style="margin:4px 0 10px">1st place gets 100 RP, 2nd gets 75 RP, 3rd gets 50 RP. Awarding adds the points to each member's balance, notifies them, and is logged. Each period can be awarded once.</p>
-  ${res.awarded?`<span class="pill ok">Awarded ${dateStr(res.awarded.createdAt)}</span>`:`<button class="btn primary" ${rows.length?'':'disabled'} onclick="awardTop3('${range}','${metric}')">Award top ${Math.min(3,rows.length)||3}</button>`}</div>
+  ${res.awarded?`<div class="row" style="align-items:center"><span class="pill ok">Awarded ${dateStr(res.awarded.createdAt)}</span><button class="btn small" onclick="resetAwardForm('${range}','${metric}')">Reset award</button></div>`:`<button class="btn primary" ${rows.length?'':'disabled'} onclick="awardTop3('${range}','${metric}')">Award top ${Math.min(3,rows.length)||3}</button>`}</div>
+  <div class="card" style="margin-bottom:14px"><h3>Reset leaderboard</h3><p class="muted" style="margin:4px 0 10px">Starts a fresh round for every board (today, week, month · XP and quests). Nobody loses XP, levels, RP or rewards; the boards just count from the moment you reset. ${res.resetAt?`Last reset: <b>${new Date(res.resetAt).toLocaleString()}</b>.`:'Not reset yet.'}</p>
+  <div class="row"><button class="btn primary" onclick="resetBoardForm('${range}','${metric}')">Reset leaderboard</button>${res.resetAt?`<button class="btn" onclick="undoBoardResetForm('${range}','${metric}')">Undo reset</button>`:''}</div></div>
   <div class="card">${boardList(rows,metric,null,true)}</div>`;
+}
+function resetBoardForm(range,metric){
+  openModal(`<h3 style="margin-bottom:8px">Reset leaderboard?</h3>
+  <p class="muted" style="font-size:.85rem;margin-bottom:12px">Every leaderboard (today, week, month, XP and quests) will start again from zero right now. Members keep all their XP, levels and RP. Tip: award the top 3 first if this round isn't awarded yet. You can undo the reset later.</p>
+  <div class="field"><label>Reason (required)</label><input id="lbr-reason" maxlength="200" placeholder="e.g. New season starts"></div>
+  <div class="row"><button class="btn primary" onclick="resetBoard('${range}','${metric}')">Yes, reset</button><button class="btn" onclick="closeModal()">Cancel</button></div>`);
+}
+async function resetBoard(range,metric){
+  const reason=document.getElementById('lbr-reason').value.trim();
+  if(!reason){toast('Reason is required');return;}
+  await run(async()=>{
+    await api('POST','/api/leaderboard/reset',{reason});
+    closeModal(); toast('Leaderboard reset'); renderStaffLeaderboard(range,metric);
+  });
+}
+function undoBoardResetForm(range,metric){
+  openModal(`<h3 style="margin-bottom:8px">Undo the reset?</h3>
+  <p class="muted" style="font-size:.85rem;margin-bottom:12px">The leaderboards go back to showing the full day, week and month, including activity from before the reset.</p>
+  <div class="row"><button class="btn primary" onclick="undoBoardReset('${range}','${metric}')">Yes, undo</button><button class="btn" onclick="closeModal()">Cancel</button></div>`);
+}
+async function undoBoardReset(range,metric){
+  await run(async()=>{
+    await api('POST','/api/leaderboard/reset/undo');
+    closeModal(); toast('Reset undone'); renderStaffLeaderboard(range,metric);
+  });
+}
+function resetAwardForm(range,metric){
+  openModal(`<h3 style="margin-bottom:8px">Reset this award?</h3>
+  <p class="muted" style="font-size:.85rem;margin-bottom:12px">The "Awarded" mark for this period is removed, so you can award the top 3 again. The winners are notified.</p>
+  <div class="field"><label class="chk"><input type="checkbox" id="ra-take" checked style="width:auto"> Also take back the RP they received</label>
+  <p class="muted" style="font-size:.78rem;margin-top:4px">If you leave this unticked and award again, the winners get the points twice. RP a winner has already spent is not taken back.</p></div>
+  <div class="field"><label>Reason (required)</label><input id="ra-reason" maxlength="200" placeholder="e.g. Awarded by mistake"></div>
+  <div class="row"><button class="btn primary" onclick="resetAward('${range}','${metric}')">Reset award</button><button class="btn" onclick="closeModal()">Cancel</button></div>`);
+}
+async function resetAward(range,metric){
+  const reason=document.getElementById('ra-reason').value.trim(), takeBack=document.getElementById('ra-take').checked;
+  if(!reason){toast('Reason is required');return;}
+  await run(async()=>{
+    const r=await api('POST','/api/leaderboard/award/reset',{range,metric,reason,takeBack});
+    closeModal();
+    toast('Award reset'+(takeBack?' — '+r.recovered+' RP taken back'+(r.missing?' ('+r.missing+' RP could not be recovered, already spent)':''):''));
+    renderStaffLeaderboard(range,metric);
+  });
 }
 async function awardTop3(range,metric){
   await run(async()=>{

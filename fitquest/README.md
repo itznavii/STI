@@ -37,6 +37,7 @@ Changing `STAFF_PASSWORD` later and redeploying updates the staff password.
 * Members can only read their own records; leaderboards hide members who opted out; staff-only data stays staff-only.
 * Membership renewal is now done by staff in person (Members → "Renew +30d"). It extends the membership and adds a loyalty stamp.
 * Referrals: a friend types the member's code when registering; the referral then waits in the staff **Verifications** tab. Approving it pays the referrer +100 RP (nothing is paid automatically). A wrong code shows an error at registration.
+* Staff can set a member's level and rank (Members → "Level / Rank") and reset the leaderboards (Leaderboard → "Reset leaderboard"). A reset only sets a cut-off time: boards count activity after it and nobody loses XP, levels or RP. It can be undone. Staff can also withdraw a Top-3 award ("Reset award"), optionally taking the RP back, so the period can be awarded again. Every change is written to the Audit Log.
 * Numbers use the Jersey 10 pixel font (`public/fonts/`) because the main pixel font draws 5 and 6 like the letter S.
 * The app refreshes notifications every 20 s while the tab is visible (each refresh is one function call).
 

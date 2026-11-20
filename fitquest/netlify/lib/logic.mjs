@@ -527,8 +527,19 @@ function boardUser(id, u, viewer) {
   if (isStaff) out.rp = u.rp;
   return out;
 }
+// Staff can reset the leaderboards. That is only a cut-off time: boards count activity after it,
+// and nobody's XP, level or RP is touched. 0 = never reset (or reset was undone).
+async function resetAt(c) {
+  const d = await getDoc(c, 'meta', 'leaderboard_reset');
+  return d && d.at ? d.at : 0;
+}
+// Award key for the current period. After a reset inside the period it is a new round, so it can be awarded once more.
+async function awardKey(c, range, metric) {
+  const key = periodKey(range, metric), r = await resetAt(c);
+  return r > periodStart(range) ? key + '_r' + r : key;
+}
 async function boardRows(c, range, metric, limit) {
-  const since = periodStart(range);
+  const since = Math.max(periodStart(range), await resetAt(c));
   const r = metric === 'xp'
     ? await c.query(
       `SELECT data->>'userId' AS uid, SUM((data->>'amount')::numeric)::int AS val FROM docs
@@ -549,8 +560,8 @@ async function boardRows(c, range, metric, limit) {
 export async function leaderboard(c, viewer, range, metric) {
   checkBoardArgs(range, metric);
   const rows = await boardRows(c, range, metric, 20);
-  const key = periodKey(range, metric);
-  const out = { rows: rows.map((r) => ({ userId: r.userId, val: r.val, u: boardUser(r.userId, r.user, viewer) })), key };
+  const key = await awardKey(c, range, metric);
+  const out = { rows: rows.map((r) => ({ userId: r.userId, val: r.val, u: boardUser(r.userId, r.user, viewer) })), key, resetAt: (await resetAt(c)) || null };
   if (viewer.role === 'staff') {
     const done = await getDoc(c, 'leaderboard_awards', key);
     out.awarded = done ? { createdAt: done.createdAt } : null;
@@ -560,7 +571,7 @@ export async function leaderboard(c, viewer, range, metric) {
 export async function awardTop3(c, staff, range, metric) {
   requireRole(staff, 'staff');
   checkBoardArgs(range, metric);
-  const key = periodKey(range, metric), pts = [100, 75, 50];
+  const key = await awardKey(c, range, metric), pts = [100, 75, 50];
   if (await getDoc(c, 'leaderboard_awards', key)) throw conflict('Already awarded for this period');
   const rows = await boardRows(c, range, metric, 3);
   if (!rows.length) throw bad('No members to reward yet');
@@ -572,6 +583,57 @@ export async function awardTop3(c, staff, range, metric) {
     await audit(c, staff, 'Awarded leaderboard place #' + (i + 1) + ' (+' + pts[i] + ' RP)', r.userId, { rp: before }, { rp: before + pts[i] }, range + ' ' + metric + ' leaderboard');
   }
   return { ok: true, count: rows.length };
+}
+
+// Withdraws the Top-3 award of the period shown on the board, so it can be awarded again.
+// takeBack=true also removes the RP the winners received (never more than they still have, so
+// RP that a winner already spent is not clawed back below zero).
+export async function resetAward(c, staff, b) {
+  requireRole(staff, 'staff');
+  checkBoardArgs(b.range, b.metric);
+  const reason = str(b.reason, 200);
+  if (!reason) throw bad('Reason is required');
+  const takeBack = b.takeBack !== false;
+  const key = await awardKey(c, b.range, b.metric);
+  const award = await getDoc(c, 'leaderboard_awards', key);
+  if (!award) throw conflict('Nothing to reset: this period has not been awarded');
+  let recovered = 0, missing = 0;
+  for (const w of award.winners || []) {
+    const u = await getDoc(c, 'users', w.userId);
+    if (!u) continue;
+    const before = u.rp || 0;
+    let take = 0;
+    if (takeBack) {
+      take = Math.min(w.rp, before);
+      missing += w.rp - take;
+      if (take > 0) await spendRP(c, w.userId, take, 'leaderboard_withdrawn', key);
+      recovered += take;
+    }
+    await notify(c, w.userId, takeBack
+      ? 'Staff withdrew your leaderboard award' + (take ? ' (-' + take + ' RP).' : '.')
+      : 'Staff reset the leaderboard award for this period (you keep the ' + w.rp + ' RP).');
+    await audit(c, staff, 'Reset leaderboard award' + (takeBack ? ' (RP taken back)' : ' (RP kept)'), w.userId, { rp: before }, { rp: before - take }, reason);
+  }
+  await delDoc(c, 'leaderboard_awards', key);
+  return { ok: true, recovered, missing, takeBack, count: (award.winners || []).length };
+}
+
+export async function resetLeaderboard(c, staff, b) {
+  requireRole(staff, 'staff');
+  const reason = str(b.reason, 200);
+  if (!reason) throw bad('Reason is required');
+  const now = Date.now();
+  await putDoc(c, 'meta', 'leaderboard_reset', { at: now, staffId: staff.id, staffName: staff.name, reason });
+  await audit(c, staff, 'Reset leaderboards', '', { resetAt: null }, { resetAt: now }, reason);
+  return { ok: true, resetAt: now };
+}
+export async function undoLeaderboardReset(c, staff) {
+  requireRole(staff, 'staff');
+  const prev = await resetAt(c);
+  if (!prev) throw conflict('The leaderboards have not been reset');
+  await putDoc(c, 'meta', 'leaderboard_reset', { at: 0, staffId: staff.id, staffName: staff.name, undone: true });
+  await audit(c, staff, 'Undid leaderboard reset', '', { resetAt: prev }, { resetAt: null }, 'Reset undone');
+  return { ok: true };
 }
 
 // ---------- home screen ----------

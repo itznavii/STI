@@ -128,6 +128,9 @@ route('POST', '/api/members/:id/adjust', ({ user, params, body }) => tx((c) => L
 route('POST', '/api/members/:id/level-rank', ({ user, params, body }) => tx((c) => L.setLevelRank(c, user, needId(params.id), body)));
 route('POST', '/api/members/:id/renew', ({ user, params }) => tx((c) => L.renewMember(c, user, needId(params.id))));
 route('POST', '/api/seasonal', ({ user, body }) => tx((c) => L.createSeasonal(c, user, body)));
+route('POST', '/api/leaderboard/reset', ({ user, body }) => tx((c) => L.resetLeaderboard(c, user, body)));
+route('POST', '/api/leaderboard/reset/undo', ({ user }) => tx((c) => L.undoLeaderboardReset(c, user)));
+route('POST', '/api/leaderboard/award/reset', ({ user, body }) => tx((c) => L.resetAward(c, user, body)));
 route('POST', '/api/leaderboard/award', ({ user, body }) => tx((c) => L.awardTop3(c, user, body.range, body.metric)));
 
 // -- generic reads --

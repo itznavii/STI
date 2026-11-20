@@ -371,6 +371,95 @@ ok(r.json.rows.find((x) => x.userId === bId).u.name === 'Ben Cruz' && r.json.awa
 r = await call('GET', '/api/leaderboard?range=month&metric=quests', { token: A });
 ok(r.status === 200 && r.json.rows.length >= 1, 'quest leaderboard');
 
+// ---------- leaderboard reset ----------
+r = await call('POST', '/api/leaderboard/reset', { token: A, body: { reason: 'me' } });
+ok(r.status === 403, 'members cannot reset the leaderboard', r);
+r = await call('POST', '/api/leaderboard/reset/undo', { token: A });
+ok(r.status === 403, 'members cannot undo a reset', r);
+r = await call('POST', '/api/leaderboard/reset', { token: S, body: {} });
+ok(r.status === 400, 'reset needs a reason', r);
+r = await call('POST', '/api/leaderboard/reset/undo', { token: S });
+ok(r.status === 409, 'cannot undo when nothing was reset', r);
+r = await call('GET', '/api/leaderboard?range=month&metric=xp', { token: S });
+const rowsBefore = r.json.rows.length;
+ok(rowsBefore >= 1 && r.json.resetAt === null, 'before reset: board has rows and no reset time', r.json);
+const xpBefore = (await call('GET', '/api/auth/me', { token: A })).json.user.xp;
+await new Promise((res) => setTimeout(res, 15));
+r = await call('POST', '/api/leaderboard/reset', { token: S, body: { reason: 'New season' } });
+ok(r.status === 200 && r.json.resetAt > 0, 'staff resets the leaderboard', r);
+for (const [range, metric] of [['today', 'xp'], ['week', 'xp'], ['month', 'xp'], ['week', 'quests'], ['month', 'quests']]) {
+  r = await call('GET', `/api/leaderboard?range=${range}&metric=${metric}`, { token: A });
+  ok(r.status === 200 && r.json.rows.length === 0 && r.json.resetAt > 0, `${range}/${metric} board is empty right after reset`, r.json);
+}
+ok((await call('GET', '/api/auth/me', { token: A })).json.user.xp === xpBefore, 'reset does not touch members XP');
+r = await call('POST', '/api/leaderboard/award', { token: S, body: { range: 'week', metric: 'xp' } });
+ok(r.status === 400, 'nothing to award on an empty board', r);
+r = await call('POST', '/api/checkin', { token: LR });
+ok(r.status === 200, 'member checks in after the reset', r);
+r = await call('GET', '/api/leaderboard?range=week&metric=xp', { token: S });
+ok(r.json.rows.length === 1 && r.json.rows[0].userId === lrId && r.json.rows[0].val === 10 && r.json.awarded === null, 'only activity after the reset counts, and the new round is not yet awarded', r.json);
+r = await call('POST', '/api/leaderboard/award', { token: S, body: { range: 'week', metric: 'xp' } });
+ok(r.status === 200 && r.json.count === 1, 'the new round can be awarded even though the old week was awarded', r);
+r = await call('POST', '/api/leaderboard/award', { token: S, body: { range: 'week', metric: 'xp' } });
+ok(r.status === 409, 'the new round can only be awarded once');
+r = await call('POST', '/api/leaderboard/reset/undo', { token: S });
+ok(r.status === 200, 'staff undoes the reset', r);
+r = await call('GET', '/api/leaderboard?range=month&metric=xp', { token: S });
+ok(r.json.rows.length >= rowsBefore && r.json.resetAt === null, 'after undo the full board is back', r.json);
+r = await call('POST', '/api/leaderboard/award', { token: S, body: { range: 'week', metric: 'xp' } });
+ok(r.status === 409, 'after undo the original week is still marked awarded');
+r = await call('POST', '/api/leaderboard/reset/undo', { token: S });
+ok(r.status === 409, 'cannot undo twice');
+r = await call('GET', '/api/collection/audit_logs', { token: S });
+ok(r.json.docs.some((d) => d.data.action === 'Reset leaderboards' && d.data.reason === 'New season') && r.json.docs.some((d) => d.data.action === 'Undid leaderboard reset'), 'reset and undo are in the audit log');
+r = await call('GET', '/api/doc/meta/leaderboard_reset', { token: S });
+ok(r.status === 403, 'reset marker is not readable through the generic API');
+
+// ---------- reset award ----------
+const awardBody = (o = {}) => ({ range: 'week', metric: 'xp', reason: 'Awarded by mistake', ...o });
+r = await call('POST', '/api/leaderboard/award/reset', { token: A, body: awardBody() });
+ok(r.status === 403, 'members cannot reset an award', r);
+r = await call('POST', '/api/leaderboard/award/reset', { token: S, body: awardBody({ reason: '' }) });
+ok(r.status === 400, 'reset award needs a reason', r);
+r = await call('POST', '/api/leaderboard/award/reset', { token: S, body: awardBody({ range: 'year' }) });
+ok(r.status === 400, 'reset award rejects a bad range', r);
+r = await call('POST', '/api/leaderboard/award/reset', { token: S, body: awardBody({ range: 'month', metric: 'quests' }) });
+ok(r.status === 409, 'cannot reset a period that was not awarded', r);
+const rpOf = async (tok) => (await call('GET', '/api/auth/me', { token: tok })).json.user.rp;
+const weekKey = (await call('GET', '/api/leaderboard?range=week&metric=xp', { token: S })).json.key;
+const winners = (await call('GET', '/api/collection/leaderboard_awards', { token: S })).json.docs.find((d) => d.id === weekKey).data.winners;
+const winTok = { [aId]: A, [bId]: B };
+const awRp = {}; for (const w of winners) awRp[w.userId] = await rpOf(winTok[w.userId]);
+ok(winners.length >= 1 && winners.every((w) => winTok[w.userId]), 'found the winners of the awarded week', winners);
+r = await call('POST', '/api/leaderboard/award/reset', { token: S, body: awardBody() });
+ok(r.status === 200 && r.json.takeBack === true && r.json.recovered === winners.reduce((n, w) => n + Math.min(w.rp, awRp[w.userId]), 0), 'staff resets the award and takes the RP back', r);
+for (const w of winners) ok(await rpOf(winTok[w.userId]) === awRp[w.userId] - Math.min(w.rp, awRp[w.userId]), 'winner RP reduced by the award', w);
+r = await call('GET', '/api/leaderboard?range=week&metric=xp', { token: S });
+ok(r.json.awarded === null, 'the board shows the period as not awarded after the reset');
+r = await call('POST', '/api/leaderboard/award/reset', { token: S, body: awardBody() });
+ok(r.status === 409, 'cannot reset the same award twice');
+r = await call('GET', '/api/collection/notifications', { token: winTok[winners[0].userId] });
+ok(r.json.docs.some((d) => /withdrew your leaderboard award/.test(d.data.msg)), 'winner is notified that the award was withdrawn');
+r = await call('POST', '/api/leaderboard/award', { token: S, body: { range: 'week', metric: 'xp' } });
+ok(r.status === 200, 'the period can be awarded again after the reset', r);
+for (const w of winners) ok(await rpOf(winTok[w.userId]) === awRp[w.userId], 'winners are back to the original RP after re-award', w);
+r = await call('POST', '/api/leaderboard/award/reset', { token: S, body: awardBody({ takeBack: false, reason: 'Redo, keep RP' }) });
+ok(r.status === 200 && r.json.takeBack === false && r.json.recovered === 0, 'reset can keep the RP the winners received', r);
+for (const w of winners) ok(await rpOf(winTok[w.userId]) === awRp[w.userId], 'RP untouched when "keep RP" is chosen', w);
+r = await call('GET', '/api/collection/audit_logs', { token: S });
+ok(r.json.docs.some((d) => /Reset leaderboard award \(RP taken back\)/.test(d.data.action)) && r.json.docs.some((d) => /Reset leaderboard award \(RP kept\)/.test(d.data.action)), 'award resets are in the audit log');
+// RP a winner already spent is not clawed back below zero
+r = await call('POST', '/api/leaderboard/reset', { token: S, body: { reason: 'round for clamp test' } });
+r = await call('POST', '/api/auth/register', { body: { name: 'Sam Spend', email: 'sam@x.com', password: 'secret1' }, ip: '8.8.8.8' });
+const SP = r.json.token, spId = r.json.user.id;
+await call('POST', '/api/checkin', { token: SP });
+r = await call('POST', '/api/leaderboard/award', { token: S, body: { range: 'week', metric: 'xp' } });
+ok(r.status === 200 && r.json.count === 1 && await rpOf(SP) === 105, 'new round awards Sam 100 RP (+5 check-in)', r);
+await call('POST', '/api/members/' + spId + '/adjust', { token: S, body: { rp: -90, reason: 'simulate spending' } });
+r = await call('POST', '/api/leaderboard/award/reset', { token: S, body: awardBody() });
+ok(r.status === 200 && r.json.recovered === 15 && r.json.missing === 85 && await rpOf(SP) === 0, 'only the RP Sam still has is taken back, never below zero', r);
+await call('POST', '/api/leaderboard/reset/undo', { token: S });
+
 // ---------- profile ----------
 r = await call('PATCH', '/api/profile', { token: A, body: { avatar: 'evil.png' } });
 ok(r.status === 400, 'avatar whitelist');
