@@ -220,6 +220,41 @@ ok(r.json.docs.length === 2, 'audit entries written only for successful adjustme
 r = await call('POST', '/api/members/staffdemo/adjust', { token: S, body: { rp: 5, reason: 'x' } });
 ok(r.status === 404, 'cannot adjust a staff account');
 
+// ---------- level / rank controller ----------
+r = await call('POST', '/api/auth/register', { body: { name: 'Lena Rank', email: 'lena@x.com', password: 'secret1' }, ip: '9.9.9.9' });
+const LR = r.json.token, lrId = r.json.user.id;
+r = await call('POST', '/api/members/' + lrId + '/level-rank', { token: LR, body: { level: 50, reason: 'me' } });
+ok(r.status === 403, 'member cannot set own level/rank', r);
+r = await call('POST', '/api/members/' + lrId + '/level-rank', { token: S, body: { level: 5 } });
+ok(r.status === 400, 'level/rank change needs a reason', r);
+r = await call('POST', '/api/members/' + lrId + '/level-rank', { token: S, body: { reason: 'x' } });
+ok(r.status === 400, 'must choose a level or a rank', r);
+for (const bad of [0, 101, 2.5, 'abc', -3]) {
+  r = await call('POST', '/api/members/' + lrId + '/level-rank', { token: S, body: { level: bad, reason: 'x' } });
+  ok(r.status === 400, 'rejects level ' + JSON.stringify(bad), r);
+}
+r = await call('POST', '/api/members/' + lrId + '/level-rank', { token: S, body: { rank: 'god', reason: 'x' } });
+ok(r.status === 400, 'rejects unknown rank', r);
+r = await call('POST', '/api/members/' + lrId + '/level-rank', { token: S, body: { level: 5, rank: 'hero', reason: 'VIP' } });
+ok(r.status === 200 && r.json.level === 5 && r.json.rank === 'hero', 'staff sets level 5 and rank hero', r);
+r = await call('GET', '/api/auth/me', { token: LR });
+ok(r.json.user.level === 5 && r.json.user.xp === 400 && r.json.user.rankOverride === 'hero', 'member data updated (level 5 = 400 XP)', r.json.user);
+r = await call('GET', '/api/collection/notifications', { token: LR });
+ok(r.json.docs.some((d) => /Staff updated your level 5 and rank hero/.test(d.data.msg)), 'member is notified', r.json.docs.map((d) => d.data.msg));
+ok(r.json.docs.some((d) => /Level 5/.test(d.data.msg) || /Level up/.test(d.data.msg)), 'level-up notification fires when raised');
+r = await call('POST', '/api/members/' + lrId + '/level-rank', { token: S, body: { level: 5, rank: 'hero', reason: 'again' } });
+ok(r.status === 400 && /Nothing changed/.test(r.json.error), 'no-op change is refused', r);
+r = await call('POST', '/api/members/' + lrId + '/level-rank', { token: S, body: { level: 2, rank: 'auto', reason: 'demoted' } });
+ok(r.status === 200, 'staff lowers level and resets rank to auto', r);
+r = await call('GET', '/api/auth/me', { token: LR });
+ok(r.json.user.level === 2 && r.json.user.xp === 100 && !r.json.user.rankOverride, 'level 2 = 100 XP, rank override cleared', r.json.user);
+r = await call('GET', '/api/leaderboard?range=month&metric=xp', { token: LR });
+ok(!r.json.rows.some((x) => x.userId === lrId), 'manual level changes do not count toward leaderboards');
+r = await call('GET', '/api/collection/audit_logs', { token: S });
+ok(r.json.docs.filter((d) => d.data.action === 'Changed level/rank').length === 2, 'each successful change is in the audit log');
+r = await call('POST', '/api/members/staffdemo/level-rank', { token: S, body: { level: 3, reason: 'x' } });
+ok(r.status === 404, 'cannot change level/rank of a staff account');
+
 // ---------- rewards ----------
 const rewards = (await call('GET', '/api/collection/rewards', { token: A })).json.docs;
 const towel = rewards.find((d) => d.data.name === 'Portable Mini Towel').id;

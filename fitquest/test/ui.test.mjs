@@ -124,6 +124,23 @@ const zedId = JSON.parse(Buffer.from(m.localStorage.getItem('fq_token').split('.
 type(s, 'adj-xp', '5'); type(s, 'adj-rp', '2000'); type(s, 'adj-reason', 'test'); await s.applyAdjust(zedId); await sleep(500);
 ok(/Adjustment applied/.test(toastText(s)), 'adjustment applied', toastText(s));
 
+// level / rank controller from the staff UI
+const lrBtn = [...s.document.querySelectorAll('#views button')].find((b) => /Level \/ Rank/.test(b.textContent) && b.dataset.name === "Zed O'Brien");
+ok(!!lrBtn, "Level / Rank button exists for a name with an apostrophe");
+errors.length = 0;
+if (lrBtn) { lrBtn.click(); await sleep(200); }
+ok(/Zed O'Brien/.test($(s, 'modal').textContent) && !!$(s, 'lr-level') && !!$(s, 'lr-rank') && errors.length === 0, 'Level / Rank dialog opens', errors.slice());
+type(s, 'lr-level', '7'); type(s, 'lr-rank', 'active'); type(s, 'lr-reason', '');
+await s.applyLevelRank(zedId); await sleep(200);
+ok(/Reason is required/.test(toastText(s)), 'dialog asks for a reason', toastText(s));
+type(s, 'lr-reason', 'UI test'); await s.applyLevelRank(zedId); await sleep(500);
+ok(/Level \/ rank updated/.test(toastText(s)), 'level / rank applied from the UI', toastText(s));
+await m.refreshMe();
+const lrMe = m.eval('me');
+ok(lrMe.level === 7 && lrMe.rankOverride === 'active', 'member now has level 7 and the Active rank', { level: lrMe.level, r: lrMe.rankOverride });
+ok(m.rankInfo(lrMe).rank.id === 'active' && m.rankInfo(lrMe).set === true, 'rankInfo honours the staff-set rank');
+ok(m.rankInfo({ ...lrMe, rankOverride: null }).rank.id === 'beginner', 'rankInfo falls back to membership length when automatic');
+
 // reward redeem from the member UI with an apostrophe-named reward
 await s.eval(`db.doc('rewards/r_apos')`).set({ name: "Men's Shirt", cost: 100, totalQty: 3, availableQty: 3, redeemedQty: 0, active: true });
 m.switchTab('rewards'); await sleep(500);

@@ -737,6 +737,28 @@ async function applyAdjust(userId){
   });
 }
 
+// ---- STAFF: LEVEL / RANK CONTROLLER ----
+function levelRankForm(userId,name,level,rankOverride){
+  openModal(`<h3 style="margin-bottom:4px">Level / Rank — ${esc(name)}</h3>
+  <p class="muted" style="font-size:.8rem;margin-bottom:12px">Changing the level moves the member's XP to that level (their progress inside the level is kept). Rank is normally automatic, based on months of membership.</p>
+  <div class="field"><label>Level (1–100)</label>
+    <div class="row" style="align-items:center;flex-wrap:nowrap"><button class="btn small" type="button" onclick="stepLevel(-1)">−</button><input id="lr-level" type="number" min="1" max="100" step="1" value="${level}" style="text-align:center"><button class="btn small" type="button" onclick="stepLevel(1)">+</button></div></div>
+  <div class="field"><label>Rank</label><select id="lr-rank"><option value="auto" ${rankOverride?'':'selected'}>Automatic (by membership length)</option>${RANKS.map(r=>`<option value="${r.id}" ${rankOverride===r.id?'selected':''}>${r.name}</option>`).join('')}</select></div>
+  <div class="field"><label>Reason (required)</label><input id="lr-reason" maxlength="200"></div>
+  <button class="btn primary" style="width:100%" onclick="applyLevelRank('${userId}')">Apply</button>`);
+}
+function stepLevel(d){ const el=document.getElementById('lr-level'); el.value=Math.max(1,Math.min(100,(parseInt(el.value)||1)+d)); }
+async function applyLevelRank(userId){
+  const level=Number(document.getElementById('lr-level').value), rank=document.getElementById('lr-rank').value;
+  const reason=document.getElementById('lr-reason').value.trim();
+  if(!Number.isInteger(level)||level<1||level>100){toast('Level must be a whole number from 1 to 100');return;}
+  if(!reason){toast('Reason is required');return;}
+  await run(async()=>{
+    await api('POST','/api/members/'+userId+'/level-rank',{level,rank,reason});
+    closeModal(); toast('Level / rank updated'); renderMembers();
+  });
+}
+
 async function renderAudit(){
   const snap = await db.collection('audit_logs').orderBy('createdAt','desc').limit(30).get();
   document.getElementById('v-audit').innerHTML = `<h2 style="margin-bottom:12px">Audit Log</h2><div class="card">${snap.docs.length?snap.docs.map(d=>{const a=d.data();return `<div style="padding:8px 0;border-bottom:1px solid var(--border)"><p style="font-size:.85rem"><strong>${esc(a.staffName)}</strong> — ${esc(a.action)}</p><p class="muted" style="font-size:.75rem">Reason: ${esc(a.reason)} · ${new Date(a.createdAt).toLocaleString()}</p></div>`;}).join(''):'<p class="muted">No entries yet.</p>'}</div>`;
@@ -755,8 +777,11 @@ function rankInfo(u){
   const start=u.membershipStart||u.createdAt||Date.now();
   const months=Math.max(0,Math.floor((Date.now()-start)/(30.44*86400000)));
   let i=0; RANKS.forEach((r,k)=>{ if(months>=r.months) i=k; });
+  const ov=u.rankOverride?RANKS.findIndex(r=>r.id===u.rankOverride):-1; // rank pinned by staff
+  if(ov>=0) i=ov;
   const next=RANKS[i+1]||null;
-  return {rank:RANKS[i],index:i,months,next,left:next?next.months-months:0,pct:next?Math.round((months-RANKS[i].months)/(next.months-RANKS[i].months)*100):100};
+  const pct=next?Math.max(0,Math.min(100,Math.round((months-RANKS[i].months)/(next.months-RANKS[i].months)*100))):100;
+  return {rank:RANKS[i],index:i,months,next,left:next?Math.max(0,next.months-months):0,pct,set:ov>=0};
 }
 const RANK_ICON={beginner:'rank_0',rookie:'medal2',active:'rank_1',hero:'trophy'}; // a different picture for each rank
 function rankBadge(r,size){ size=size||30; return `<img class="rb r-${r.id}" src="${IMG}${RANK_ICON[r.id]||'rank_0'}.png" width="${size}" height="${size}" alt="${r.name}">`; }
@@ -784,7 +809,7 @@ async function renderRank(){
     <div style="flex:1;min-width:200px"><p class="muted">Current rank</p><h2>${ri.rank.name}</h2>
     ${ri.next?`<div class="bar"><div style="width:${ri.pct}%"></div></div><p class="muted" style="margin-top:6px;font-size:.8rem">${ri.left} more month(s) to reach ${ri.next.name}</p>`:`<p class="muted" style="margin-top:6px">You hold the top rank. It stays as long as you keep your membership.</p>`}</div></div>
   <div class="ladder">${RANKS.map((r,i)=>`<div class="card step ${i<ri.index?'done':i===ri.index?'now':'locked'}">${rankBadge(r,52)}<p class="nm">${r.name}</p><p class="muted" style="font-size:.78rem">${r.label}</p></div>`).join('')}</div>
-  <p class="muted" style="margin-top:12px;font-size:.82rem">Rank follows how long you've been a member. It never blocks a quest and doesn't reset once earned.</p>`;
+  <p class="muted" style="margin-top:12px;font-size:.82rem">${ri.set?'Your rank was set by staff. ':''}Rank follows how long you've been a member. It never blocks a quest and doesn't reset once earned.</p>`;
 }
 
 // ---- MEMBER PROFILE ----
@@ -896,7 +921,7 @@ async function renderMembers(){
     <div class="mhead"><img class="av" src="${avatarFor(u,d.id)}" alt=""><div><p style="font-weight:800">${esc(u.name)}</p><p class="muted" style="font-size:.8rem">${esc(u.email)}</p></div></div>
     <div class="row" style="margin-top:8px;align-items:center"><span class="pill xp">Lvl ${u.level}</span><span class="pill rp">${u.rp} RP</span>${rankChip(u)}</div>
     <p class="muted" style="font-size:.75rem;margin-top:6px">Streak: ${u.streak} · XP: ${u.xp} · Stamps: ${(u.loyaltyStamps||0)%12}/12</p>
-    <div class="row" style="margin-top:8px"><button class="btn small" onclick="viewMember('${d.id}')">View profile</button><button class="btn small" data-id="${d.id}" data-name="${esc(u.name)}" onclick="adjustForm(this.dataset.id,this.dataset.name)">Adjust XP/RP</button><button class="btn small" data-id="${d.id}" data-name="${esc(u.name)}" onclick="renewMember(this.dataset.id,this.dataset.name)">Renew +30d</button></div></div>`;}).join('')||'<p class="muted">No members yet.</p>'}</div>`;
+    <div class="row" style="margin-top:8px"><button class="btn small" onclick="viewMember('${d.id}')">View profile</button><button class="btn small" data-id="${d.id}" data-name="${esc(u.name)}" onclick="adjustForm(this.dataset.id,this.dataset.name)">Adjust XP/RP</button><button class="btn small" data-id="${d.id}" data-name="${esc(u.name)}" data-level="${u.level||1}" data-rank="${esc(u.rankOverride||'')}" onclick="levelRankForm(this.dataset.id,this.dataset.name,this.dataset.level,this.dataset.rank)">Level / Rank</button><button class="btn small" data-id="${d.id}" data-name="${esc(u.name)}" onclick="renewMember(this.dataset.id,this.dataset.name)">Renew +30d</button></div></div>`;}).join('')||'<p class="muted">No members yet.</p>'}</div>`;
 }
 
 // ---- LEADERBOARDS (shared by members and staff) ----

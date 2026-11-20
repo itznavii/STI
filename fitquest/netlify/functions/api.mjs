@@ -125,6 +125,7 @@ route('POST', '/api/seasonal-completions/:id/decision', ({ user, params, body })
 route('POST', '/api/referrals/:id/decision', ({ user, params, body }) => tx((c) => L.decideReferral(c, user, needId(params.id), body.decision)));
 route('POST', '/api/redemptions/:id/decision', ({ user, params, body }) => tx((c) => L.decideRedemption(c, user, needId(params.id), body.decision)));
 route('POST', '/api/members/:id/adjust', ({ user, params, body }) => tx((c) => L.adjustMember(c, user, needId(params.id), body)));
+route('POST', '/api/members/:id/level-rank', ({ user, params, body }) => tx((c) => L.setLevelRank(c, user, needId(params.id), body)));
 route('POST', '/api/members/:id/renew', ({ user, params }) => tx((c) => L.renewMember(c, user, needId(params.id))));
 route('POST', '/api/seasonal', ({ user, body }) => tx((c) => L.createSeasonal(c, user, body)));
 route('POST', '/api/leaderboard/award', ({ user, body }) => tx((c) => L.awardTop3(c, user, body.range, body.metric)));

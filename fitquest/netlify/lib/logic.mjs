@@ -438,6 +438,45 @@ export async function adjustMember(c, staff, memberId, b) {
   return { ok: true };
 }
 
+// Staff "Level / Rank" controller. Level is stored as XP (level = floor(xp/100)+1), so setting a
+// level moves XP to that level and keeps the member's progress inside the level. Rank normally
+// follows months of membership; staff can pin one ('beginner'...'hero') or return it to 'auto'.
+export const RANK_IDS = ['beginner', 'rookie', 'active', 'hero'];
+export const MAX_LEVEL = 100;
+export async function setLevelRank(c, staff, memberId, b) {
+  requireRole(staff, 'staff');
+  const m = await memberOrThrow(c, memberId);
+  const reason = str(b.reason, 200);
+  if (!reason) throw bad('Reason is required');
+  const hasLevel = b.level !== undefined && b.level !== null && b.level !== '';
+  const hasRank = b.rank !== undefined && b.rank !== null && b.rank !== '';
+  if (!hasLevel && !hasRank) throw bad('Choose a level or a rank');
+  const prev = { level: m.level || 1, xp: m.xp || 0, rank: m.rankOverride || 'auto' };
+  const next = { ...prev };
+  if (hasLevel) {
+    const level = Number(b.level);
+    if (!Number.isInteger(level) || level < 1 || level > MAX_LEVEL) throw bad('Level must be a whole number from 1 to ' + MAX_LEVEL);
+    const target = (level - 1) * 100 + ((m.xp || 0) % 100);
+    if (target !== (m.xp || 0)) await addXP(c, memberId, target - (m.xp || 0), 'manual_adjustment', staff.id);
+    const after = await getDoc(c, 'users', memberId);
+    next.level = after.level; next.xp = after.xp;
+  }
+  if (hasRank) {
+    const rank = typeof b.rank === 'string' ? b.rank : '';
+    if (rank !== 'auto' && !RANK_IDS.includes(rank)) throw bad('Unknown rank');
+    await patchDoc(c, 'users', memberId, { rankOverride: rank === 'auto' ? null : rank });
+    next.rank = rank;
+  }
+  if (next.level === prev.level && next.rank === prev.rank) throw bad('Nothing changed');
+  await audit(c, staff, 'Changed level/rank', memberId, prev, next, reason);
+  const bits = [];
+  if (next.level !== prev.level) bits.push('level ' + next.level);
+  if (next.rank !== prev.rank) bits.push('rank ' + (next.rank === 'auto' ? 'back to automatic' : next.rank));
+  await notify(c, memberId, 'Staff updated your ' + bits.join(' and ') + ' — ' + reason);
+  await evaluateAchievements(c, memberId);
+  return { ok: true, level: next.level, rank: next.rank };
+}
+
 // In-person renewal: +30 days of membership and +1 loyalty stamp. Members cannot do this themselves.
 export async function renewMember(c, staff, memberId) {
   requireRole(staff, 'staff');
@@ -482,7 +521,7 @@ function boardUser(id, u, viewer) {
   const hidden = u.hideOnBoard && id !== viewer.id && !isStaff;
   const out = {
     name: hidden ? 'Hidden hero' : u.name, nickname: hidden ? '' : (u.nickname || ''), hideOnBoard: !!u.hideOnBoard,
-    level: u.level, membershipStart: u.membershipStart, createdAt: u.createdAt,
+    level: u.level, membershipStart: u.membershipStart, createdAt: u.createdAt, rankOverride: u.rankOverride || null,
   };
   if (!hidden && u.avatar) out.avatar = u.avatar;
   if (isStaff) out.rp = u.rp;
